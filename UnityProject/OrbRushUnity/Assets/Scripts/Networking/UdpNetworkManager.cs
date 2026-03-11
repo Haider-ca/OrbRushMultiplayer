@@ -21,6 +21,7 @@ namespace OrbRush.Networking
 		public float joinBroadcastIntervalSeconds = 2f;
 		public float scoreBroadcastIntervalSeconds = 2f;
 		public float orbBroadcastIntervalSeconds = 2f;
+		public float gameOverBroadcastIntervalSeconds = 1f;
 		public float remotePlayerTimeoutSeconds = 8f;
 
 		private UdpClient udpClient;
@@ -31,6 +32,7 @@ namespace OrbRush.Networking
 		private float nextJoinBroadcastTime;
 		private float nextScoreBroadcastTime;
 		private float nextOrbBroadcastTime;
+		private float nextGameOverBroadcastTime;
 
 		private readonly Dictionary<int, long> lastSequenceByPlayer = new Dictionary<int, long>();
 		private readonly Dictionary<int, long> lastScoreSequenceByPlayer = new Dictionary<int, long>();
@@ -71,6 +73,7 @@ namespace OrbRush.Networking
 			nextJoinBroadcastTime = Time.time + joinBroadcastIntervalSeconds;
 			nextScoreBroadcastTime = Time.time + scoreBroadcastIntervalSeconds;
 			nextOrbBroadcastTime = Time.time + orbBroadcastIntervalSeconds;
+			nextGameOverBroadcastTime = Time.time + gameOverBroadcastIntervalSeconds;
 		}
 
 		private void Update()
@@ -97,6 +100,12 @@ namespace OrbRush.Networking
 			{
 				BroadcastOrbSnapshot();
 				nextOrbBroadcastTime = Time.time + orbBroadcastIntervalSeconds;
+			}
+
+			if (gameOverBroadcastIntervalSeconds > 0f && Time.time >= nextGameOverBroadcastTime)
+			{
+				BroadcastGameOverSnapshot();
+				nextGameOverBroadcastTime = Time.time + gameOverBroadcastIntervalSeconds;
 			}
 
 			CleanupTimedOutRemotePlayers();
@@ -204,6 +213,21 @@ namespace OrbRush.Networking
 				x = orbPosition.x,
 				y = orbPosition.y,
 				z = orbPosition.z,
+				sequence = System.DateTime.UtcNow.Ticks
+			};
+
+			SendState(state);
+		}
+
+		private void BroadcastGameOverSnapshot()
+		{
+			if (ScoreManager.Instance == null || !ScoreManager.Instance.TryGetGameOverWinner(out int winnerId))
+				return;
+
+			PlayerState state = new PlayerState
+			{
+				messageType = "GAME_OVER",
+				winnerId = winnerId,
 				sequence = System.DateTime.UtcNow.Ticks
 			};
 
