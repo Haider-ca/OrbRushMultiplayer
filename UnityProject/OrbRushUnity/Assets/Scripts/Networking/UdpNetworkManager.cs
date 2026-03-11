@@ -27,6 +27,7 @@ namespace OrbRush.Networking
 		private IPEndPoint multicastEndPoint;
 		private Thread receiveThread;
 		private bool isRunning;
+		private bool leaveSent;
 		private float nextJoinBroadcastTime;
 		private float nextScoreBroadcastTime;
 		private float nextOrbBroadcastTime;
@@ -101,8 +102,21 @@ namespace OrbRush.Networking
 			CleanupTimedOutRemotePlayers();
 		}
 
+		private void OnApplicationQuit()
+		{
+			ShutdownNetwork(true);
+		}
+
 		private void OnDestroy()
 		{
+			ShutdownNetwork(!leaveSent);
+		}
+
+		private void ShutdownNetwork(bool sendLeave)
+		{
+			if (sendLeave)
+				SendLeave();
+
 			isRunning = false;
 
 			try
@@ -144,6 +158,22 @@ namespace OrbRush.Networking
 				sequence = System.DateTime.UtcNow.Ticks
 			};
 
+			SendState(state);
+		}
+
+		private void SendLeave()
+		{
+			if (leaveSent || udpClient == null || GameManager.Instance == null || GameManager.Instance.localPlayerId == 0)
+				return;
+
+			PlayerState state = new PlayerState
+			{
+				messageType = "LEAVE",
+				playerId = GameManager.Instance.localPlayerId,
+				sequence = System.DateTime.UtcNow.Ticks
+			};
+
+			leaveSent = true;
 			SendState(state);
 		}
 
@@ -230,6 +260,7 @@ namespace OrbRush.Networking
 			{
 				case "MOVE":
 				case "JOIN":
+				case "LEAVE":
 					return !TryTrackLatestSequence(lastSequenceByPlayer, state.playerId, state.sequence, true);
 
 				case "SCORE":
@@ -291,12 +322,18 @@ namespace OrbRush.Networking
 				return;
 
 			foreach (int playerId in timedOutPlayers)
-			{
-				lastSeenTimeByPlayer.Remove(playerId);
-				lastSequenceByPlayer.Remove(playerId);
-				lastScoreSequenceByPlayer.Remove(playerId);
-				GameManager.Instance.RemoveRemotePlayer(playerId);
-			}
+				RemoveRemotePlayerState(playerId);
+		}
+
+		private void RemoveRemotePlayerState(int playerId)
+		{
+			if (GameManager.Instance == null)
+				return;
+
+			lastSeenTimeByPlayer.Remove(playerId);
+			lastSequenceByPlayer.Remove(playerId);
+			lastScoreSequenceByPlayer.Remove(playerId);
+			GameManager.Instance.RemoveRemotePlayer(playerId);
 		}
 
 		private void TrackRemotePlayerHeartbeat(PlayerState state)
@@ -343,6 +380,10 @@ namespace OrbRush.Networking
 
 				case "GAME_OVER":
 					ScoreManager.Instance.ApplyGameOver(state.winnerId);
+					break;
+
+				case "LEAVE":
+					RemoveRemotePlayerState(state.playerId);
 					break;
 			}
 		}
