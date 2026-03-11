@@ -23,10 +23,13 @@ namespace OrbRush.Networking
 		private UdpClient udpClient;
 		private IPEndPoint multicastEndPoint;
 		private Thread receiveThread;
-		private bool isRunning = false;
-		private float nextJoinBroadcastTime = 0f;
+			private bool isRunning = false;
+			private float nextJoinBroadcastTime = 0f;
 
-		private readonly Dictionary<int, long> lastSequenceByPlayer = new Dictionary<int, long>();
+			private readonly Dictionary<int, long> lastSequenceByPlayer = new Dictionary<int, long>();
+			private readonly Dictionary<int, long> lastScoreSequenceByPlayer = new Dictionary<int, long>();
+			private long lastOrbSpawnSequence = -1;
+			private long lastGameOverSequence = -1;
 
 		private void Awake()
 		{
@@ -147,40 +150,78 @@ namespace OrbRush.Networking
 					if (state == null)
 						continue;
 
-					if (state.playerId == GameManager.Instance.localPlayerId &&
-						state.messageType != "ORB_SPAWN" &&
-						state.messageType != "GAME_OVER")
-					{
-						continue;
-					}
-
-					if (state.messageType == "MOVE" || state.messageType == "JOIN")
-					{
-						if (state.playerId != 0)
+						if (state.playerId == GameManager.Instance.localPlayerId &&
+							state.messageType != "ORB_SPAWN" &&
+							state.messageType != "GAME_OVER")
 						{
-							if (!lastSequenceByPlayer.ContainsKey(state.playerId))
-								lastSequenceByPlayer[state.playerId] = -1;
-
-							if (state.messageType == "MOVE" &&
-								state.sequence <= lastSequenceByPlayer[state.playerId])
-							{
-								continue;
-							}
-
-							lastSequenceByPlayer[state.playerId] = state.sequence;
+							continue;
 						}
-					}
 
-					MainThreadDispatcher.Enqueue(() => ApplyState(state));
-				}
+						if (ShouldIgnoreState(state))
+							continue;
+
+						MainThreadDispatcher.Enqueue(() => ApplyState(state));
+					}
 				catch
 				{
+					}
 				}
 			}
-		}
 
-		private void ApplyState(PlayerState state)
-		{
+			private bool ShouldIgnoreState(PlayerState state)
+			{
+				switch (state.messageType)
+				{
+					case "MOVE":
+					case "JOIN":
+						return !TryTrackLatestSequence(lastSequenceByPlayer, state.playerId, state.sequence, state.messageType == "MOVE");
+
+					case "SCORE":
+						return !TryTrackLatestSequence(lastScoreSequenceByPlayer, state.playerId, state.sequence, true);
+
+					case "ORB_SPAWN":
+						if (state.sequence <= lastOrbSpawnSequence)
+							return true;
+
+						lastOrbSpawnSequence = state.sequence;
+						return false;
+
+					case "GAME_OVER":
+						if (state.sequence <= lastGameOverSequence)
+							return true;
+
+						lastGameOverSequence = state.sequence;
+						return false;
+
+					default:
+						return false;
+				}
+			}
+
+			private bool TryTrackLatestSequence(
+				Dictionary<int, long> sequenceMap,
+				int key,
+				long sequence,
+				bool rejectOlderOrDuplicate)
+			{
+				if (key == 0)
+					return true;
+
+				if (!sequenceMap.ContainsKey(key))
+				{
+					sequenceMap[key] = sequence;
+					return true;
+				}
+
+				if (rejectOlderOrDuplicate && sequence <= sequenceMap[key])
+					return false;
+
+				sequenceMap[key] = sequence;
+				return true;
+			}
+
+			private void ApplyState(PlayerState state)
+			{
 			switch (state.messageType)
 			{
 				case "JOIN":
