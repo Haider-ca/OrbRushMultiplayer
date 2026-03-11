@@ -18,11 +18,13 @@ namespace OrbRush.Networking
 
 		public string multicastAddress = "230.0.0.1";
 		public int port = 11000;
+		public float joinBroadcastIntervalSeconds = 2f;
 
 		private UdpClient udpClient;
 		private IPEndPoint multicastEndPoint;
 		private Thread receiveThread;
 		private bool isRunning = false;
+		private float nextJoinBroadcastTime = 0f;
 
 		private readonly Dictionary<int, long> lastSequenceByPlayer = new Dictionary<int, long>();
 
@@ -57,6 +59,20 @@ namespace OrbRush.Networking
 			receiveThread.Start();
 
 			SendJoin(localPlayerId, spawn);
+			nextJoinBroadcastTime = Time.time + joinBroadcastIntervalSeconds;
+		}
+
+		private void Update()
+		{
+			if (!isRunning || joinBroadcastIntervalSeconds <= 0f)
+				return;
+
+			if (Time.time < nextJoinBroadcastTime)
+				return;
+
+			Vector3 localPosition = GetLocalPlayerPosition();
+			SendJoin(GameManager.Instance.localPlayerId, localPosition);
+			nextJoinBroadcastTime = Time.time + joinBroadcastIntervalSeconds;
 		}
 
 		private void OnDestroy()
@@ -103,6 +119,18 @@ namespace OrbRush.Networking
 			};
 
 			SendState(state);
+		}
+
+		private Vector3 GetLocalPlayerPosition()
+		{
+			PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+			foreach (PlayerController controller in players)
+			{
+				if (controller.isLocalPlayer)
+					return controller.transform.position;
+			}
+
+			return Vector3.zero;
 		}
 
 		private void ReceiveLoop()
