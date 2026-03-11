@@ -3,7 +3,7 @@ using OrbRush.Networking;
 
 namespace OrbRush.GameLogic
 {
-	// Author: Haider
+	// Author: Haider, Jerry(Edit)
 	// Responsibility: Spawn and respawn the orb
 	public class OrbSpawner : MonoBehaviour
 	{
@@ -36,7 +36,7 @@ namespace OrbRush.GameLogic
 			Vector3 newPos = GameManager.Instance.GetRandomSpawnPosition();
 			SpawnOrb(newPos);
 
-			if (UdpNetworkManager.Instance != null)
+			if (NetworkBridge.Instance != null)
 			{
 				PlayerState state = new PlayerState
 				{
@@ -47,7 +47,7 @@ namespace OrbRush.GameLogic
 					sequence = System.DateTime.UtcNow.Ticks
 				};
 
-				UdpNetworkManager.Instance.SendState(state);
+				NetworkBridge.Instance.SendState(state);
 			}
 		}
 

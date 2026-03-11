@@ -28,3 +28,16 @@ Recordings/
 
 .vs/
 UnityProject/OrbRushUnity/.vs/
+.idea/
+UnityProject/OrbRushUnity/.idea/
+
+# ASP.NET Server build output
+OrbRushServer/bin/
+OrbRushServer/obj/
+
+# SignalR DLL helper (build tool, not needed at runtime)
+SignalRDllHelper/bin/
+SignalRDllHelper/obj/
+SignalRDllHelper/publish/
+
+output/

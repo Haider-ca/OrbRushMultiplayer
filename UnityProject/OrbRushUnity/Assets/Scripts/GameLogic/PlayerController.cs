@@ -3,7 +3,7 @@ using OrbRush.Networking;
 
 namespace OrbRush.GameLogic
 {
-	// Author: Haider
+	// Author: Haider, Jerry(Edit)
 	// Responsibility: Local player movement and sending movement updates
 	public class PlayerController : MonoBehaviour
 	{
@@ -39,7 +39,7 @@ namespace OrbRush.GameLogic
 
 		private void SendMove()
 		{
-			if (UdpNetworkManager.Instance == null)
+			if (NetworkBridge.Instance == null)
 				return;
 
 			PlayerState state = new PlayerState
@@ -52,7 +52,7 @@ namespace OrbRush.GameLogic
 				sequence = sequenceNumber++
 			};
 
-			UdpNetworkManager.Instance.SendState(state);
+			NetworkBridge.Instance.SendState(state);
 		}
 	}
 }

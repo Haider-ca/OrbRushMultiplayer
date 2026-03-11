@@ -423,6 +423,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1479165015}
+  - component: {fileID: 1479165016}
   m_Layer: 0
   m_Name: MainThreadDispatcher
   m_TagString: Untagged
@@ -445,6 +446,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1479165016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1479165014}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89b8b40257bb79742be6459967510e71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OrbRush.Utilities.MainThreadDispatcher
 --- !u!1 &1685571299
 GameObject:
   m_ObjectHideFlags: 0
@@ -538,6 +551,96 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OrbRush.Networking.UdpNetworkManager
   multicastAddress: 230.0.0.1
   port: 11000
+--- !u!1 &1918839964
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1918839966}
+  - component: {fileID: 1918839965}
+  m_Layer: 0
+  m_Name: SignalRNetworkManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1918839965
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1918839964}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a76f9918ed98b54889c087685a51ab5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OrbRush.Networking.SignalRNetworkManager
+  serverUrl: http://localhost:5264/gamehub
+--- !u!4 &1918839966
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1918839964}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.14952, y: 0, z: 0.15783}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2015290978
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2015290980}
+  - component: {fileID: 2015290979}
+  m_Layer: 0
+  m_Name: NetworkBridge
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2015290979
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2015290978}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5ed56d65f90e8241a10e72e346b48f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OrbRush.Networking.NetworkBridge
+  mode: 1
+--- !u!4 &2015290980
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2015290978}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.14952, y: 0, z: 0.15783}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2115541869
 GameObject:
   m_ObjectHideFlags: 0
@@ -547,6 +650,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2115541870}
+  - component: {fileID: 2115541871}
   m_Layer: 0
   m_Name: HUDController
   m_TagString: Untagged
@@ -569,6 +673,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2115541871
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2115541869}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5899c2524e1da524d87e58488dc47b52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OrbRush.UI.HUDController
+  scoreText: {fileID: 0}
+  statusText: {fileID: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -581,3 +699,5 @@ SceneRoots:
   - {fileID: 2115541870}
   - {fileID: 666779979}
   - {fileID: 1237970992}
+  - {fileID: 2015290980}
+  - {fileID: 1918839966}
