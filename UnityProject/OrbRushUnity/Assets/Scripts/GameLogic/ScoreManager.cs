@@ -23,6 +23,24 @@ namespace OrbRush.GameLogic
 
 		private void Start()
 		{
+			UpdateStatusText();
+			RefreshScoreUI();
+		}
+
+		public void RegisterPlayer(int playerId)
+		{
+			if (!scores.ContainsKey(playerId))
+				scores[playerId] = 0;
+
+			RefreshScoreUI();
+		}
+
+		public void RemovePlayer(int playerId)
+		{
+			if (!scores.ContainsKey(playerId))
+				return;
+
+			scores.Remove(playerId);
 			RefreshScoreUI();
 		}
 
@@ -65,12 +83,49 @@ namespace OrbRush.GameLogic
 					NetworkBridge.Instance.SendState(state);
 				}
 			}
+			else
+			{
+				UpdateStatusText();
+			}
+		}
+
+		public void ApplyOrbCollected(int playerId, Vector3 newOrbPosition)
+		{
+			if (!scores.ContainsKey(playerId))
+				scores[playerId] = 0;
+
+			scores[playerId]++;
+			RefreshScoreUI();
+			OrbSpawner.Instance?.ApplyRemoteOrbSpawn(newOrbPosition);
+
+			if (scores[playerId] >= winScore)
+			{
+				if (HUDController.Instance != null)
+					HUDController.Instance.SetStatusText("Player " + playerId + " wins!");
+
+				if (playerId == GameManager.Instance.localPlayerId && NetworkBridge.Instance != null)
+				{
+					PlayerState state = new PlayerState
+					{
+						messageType = "GAME_OVER",
+						winnerId = playerId,
+						sequence = System.DateTime.UtcNow.Ticks
+					};
+
+					NetworkBridge.Instance.SendState(state);
+				}
+			}
+			else
+			{
+				UpdateStatusText();
+			}
 		}
 
 		public void SetRemoteScore(int playerId, int score)
 		{
 			scores[playerId] = score;
 			RefreshScoreUI();
+			UpdateStatusText();
 		}
 
 		public void ApplyGameOver(int winnerId)
@@ -85,6 +140,11 @@ namespace OrbRush.GameLogic
 				return;
 
 			StringBuilder sb = new StringBuilder();
+			int localPlayerId = GameManager.Instance != null ? GameManager.Instance.localPlayerId : 0;
+			int localScore = scores.ContainsKey(localPlayerId) ? scores[localPlayerId] : 0;
+
+			sb.AppendLine("First to " + winScore + " points wins");
+			sb.AppendLine("My Score: " + localScore);
 			sb.AppendLine("Scores");
 
 			foreach (var kv in scores)
@@ -93,6 +153,14 @@ namespace OrbRush.GameLogic
 			}
 
 			HUDController.Instance.SetScoreText(sb.ToString());
+		}
+
+		private void UpdateStatusText()
+		{
+			if (HUDController.Instance == null)
+				return;
+
+			HUDController.Instance.SetStatusText("Game ends when a player reaches " + winScore + " points");
 		}
 	}
 }

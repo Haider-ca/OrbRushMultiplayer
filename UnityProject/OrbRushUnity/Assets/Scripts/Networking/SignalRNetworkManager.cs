@@ -18,6 +18,8 @@ namespace OrbRush.Networking
 
 		private HubConnection connection;
 		private bool isConnected = false;
+		private int localPlayerId;
+		private Vector3 localSpawnPosition;
 
 		private void Awake()
 		{
@@ -26,16 +28,16 @@ namespace OrbRush.Networking
 
 		private async void Start()
 		{
-			int localPlayerId = UnityEngine.Random.Range(1000, 9999);
-			Vector3 spawn = new Vector3(
+			localPlayerId = UnityEngine.Random.Range(1000, 9999);
+			localSpawnPosition = new Vector3(
 				UnityEngine.Random.Range(-6f, 6f),
 				5f,
 				UnityEngine.Random.Range(-6f, 6f));
 
-			GameManager.Instance.SpawnLocalPlayer(localPlayerId, spawn);
+			GameManager.Instance.SpawnLocalPlayer(localPlayerId, localSpawnPosition);
 
 			if (HUDController.Instance != null)
-				HUDController.Instance.SetStatusText("Local Player ID: " + localPlayerId + " (SignalR)");
+					HUDController.Instance.SetStatusText("Local Player ID: " + localPlayerId + " (SignalR)");
 
 			connection = new HubConnectionBuilder()
 				.WithUrl(serverUrl)
@@ -50,8 +52,7 @@ namespace OrbRush.Networking
 				isConnected = true;
 				Debug.Log("[SignalR] Connected to server: " + serverUrl);
 
-				await connection.InvokeAsync("SendJoin",
-					localPlayerId, spawn.x, spawn.y, spawn.z);
+				await SendLocalJoinAsync();
 			}
 			catch (Exception ex)
 			{
@@ -65,13 +66,14 @@ namespace OrbRush.Networking
 				isConnected = false;
 				Debug.LogWarning("[SignalR] Disconnected. Reconnecting...");
 				await Task.Delay(2000);
-				try
-				{
-					await connection.StartAsync();
-					isConnected = true;
-				}
-				catch (Exception ex)
-				{
+					try
+					{
+						await connection.StartAsync();
+						isConnected = true;
+						await SendLocalJoinAsync();
+					}
+					catch (Exception ex)
+					{
 					Debug.LogError("[SignalR] Reconnect failed: " + ex.Message);
 				}
 			};
@@ -86,6 +88,15 @@ namespace OrbRush.Networking
 					{
 						GameManager.Instance.SpawnRemotePlayer(
 							playerId, new Vector3(x, y, z));
+					});
+				});
+
+			connection.On<int>("ReceivePlayerLeft",
+				(playerId) =>
+				{
+					MainThreadDispatcher.Enqueue(() =>
+					{
+						GameManager.Instance.RemoveRemotePlayer(playerId);
 					});
 				});
 
@@ -114,6 +125,17 @@ namespace OrbRush.Networking
 					MainThreadDispatcher.Enqueue(() =>
 					{
 						OrbSpawner.Instance.ApplyRemoteOrbSpawn(
+							new Vector3(x, y, z));
+					});
+				});
+
+			connection.On<int, float, float, float, long>("ReceiveOrbCollect",
+				(playerId, x, y, z, sequence) =>
+				{
+					MainThreadDispatcher.Enqueue(() =>
+					{
+						ScoreManager.Instance.ApplyOrbCollected(
+							playerId,
 							new Vector3(x, y, z));
 					});
 				});
@@ -159,7 +181,21 @@ namespace OrbRush.Networking
 					_ = connection.InvokeAsync("SendGameOver",
 						state.winnerId);
 					break;
+
+				case "ORB_COLLECT":
+					_ = connection.InvokeAsync("SendOrbCollect",
+						state.playerId, state.x, state.y, state.z, state.sequence);
+					break;
 			}
+		}
+
+		private Task SendLocalJoinAsync()
+		{
+			return connection.InvokeAsync("SendJoin",
+				localPlayerId,
+				localSpawnPosition.x,
+				localSpawnPosition.y,
+				localSpawnPosition.z);
 		}
 
 		private async void OnDestroy()

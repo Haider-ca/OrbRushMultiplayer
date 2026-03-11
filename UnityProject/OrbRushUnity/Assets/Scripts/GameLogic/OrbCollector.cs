@@ -1,4 +1,5 @@
 using UnityEngine;
+using OrbRush.Networking;
 
 namespace OrbRush.GameLogic
 {
@@ -15,8 +16,21 @@ namespace OrbRush.GameLogic
 
 			if (other.CompareTag("Orb"))
 			{
-				ScoreManager.Instance.AddScore(controller.playerId);
-				OrbSpawner.Instance.RespawnOrbAndBroadcast();
+				if (OrbSpawner.Instance == null || !OrbSpawner.Instance.ConsumeCurrentOrb())
+					return;
+
+				Vector3 newOrbPosition = GameManager.Instance.GetRandomSpawnPosition();
+				PlayerState state = new PlayerState
+				{
+					messageType = "ORB_COLLECT",
+					playerId = controller.playerId,
+					x = newOrbPosition.x,
+					y = newOrbPosition.y,
+					z = newOrbPosition.z,
+					sequence = System.DateTime.UtcNow.Ticks
+				};
+
+				NetworkBridge.Instance?.SendState(state);
 			}
 		}
 	}

@@ -25,6 +25,7 @@ namespace OrbRush.Networking
 		private bool isRunning = false;
 
 		private readonly Dictionary<int, long> lastSequenceByPlayer = new Dictionary<int, long>();
+		private readonly HashSet<long> processedOrbCollectSequences = new HashSet<long>();
 
 		private void Awake()
 		{
@@ -121,7 +122,8 @@ namespace OrbRush.Networking
 
 					if (state.playerId == GameManager.Instance.localPlayerId &&
 						state.messageType != "ORB_SPAWN" &&
-						state.messageType != "GAME_OVER")
+						state.messageType != "GAME_OVER" &&
+						state.messageType != "ORB_COLLECT")
 					{
 						continue;
 					}
@@ -141,6 +143,14 @@ namespace OrbRush.Networking
 
 							lastSequenceByPlayer[state.playerId] = state.sequence;
 						}
+					}
+
+					if (state.messageType == "ORB_COLLECT")
+					{
+						if (processedOrbCollectSequences.Contains(state.sequence))
+							continue;
+
+						processedOrbCollectSequences.Add(state.sequence);
 					}
 
 					MainThreadDispatcher.Enqueue(() => ApplyState(state));
@@ -173,6 +183,12 @@ namespace OrbRush.Networking
 
 				case "ORB_SPAWN":
 					OrbSpawner.Instance.ApplyRemoteOrbSpawn(
+						new Vector3(state.x, state.y, state.z));
+					break;
+
+				case "ORB_COLLECT":
+					ScoreManager.Instance.ApplyOrbCollected(
+						state.playerId,
 						new Vector3(state.x, state.y, state.z));
 					break;
 

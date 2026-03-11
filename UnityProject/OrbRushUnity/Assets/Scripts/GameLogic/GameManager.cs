@@ -34,6 +34,7 @@ namespace OrbRush.GameLogic
 			controller.isLocalPlayer = true;
 
 			players[playerId] = player;
+			ScoreManager.Instance?.RegisterPlayer(playerId);
 		}
 
 		public void SpawnRemotePlayer(int playerId, Vector3 position)
@@ -47,6 +48,7 @@ namespace OrbRush.GameLogic
 			controller.isLocalPlayer = false;
 
 			players[playerId] = player;
+			ScoreManager.Instance?.RegisterPlayer(playerId);
 		}
 
 		public void UpdateRemotePlayerPosition(int playerId, Vector3 position)
@@ -58,6 +60,16 @@ namespace OrbRush.GameLogic
 				SpawnRemotePlayer(playerId, position);
 
 			players[playerId].transform.position = position;
+		}
+
+		public void RemoveRemotePlayer(int playerId)
+		{
+			if (playerId == localPlayerId || !players.ContainsKey(playerId))
+				return;
+
+			Destroy(players[playerId]);
+			players.Remove(playerId);
+			ScoreManager.Instance?.RemovePlayer(playerId);
 		}
 
 		public Vector3 GetRandomSpawnPosition()

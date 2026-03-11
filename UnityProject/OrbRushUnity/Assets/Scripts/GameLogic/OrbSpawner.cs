@@ -31,6 +31,16 @@ namespace OrbRush.GameLogic
 			currentOrb = Instantiate(orbPrefab, position, Quaternion.identity);
 		}
 
+		public bool ConsumeCurrentOrb()
+		{
+			if (currentOrb == null)
+				return false;
+
+			Destroy(currentOrb);
+			currentOrb = null;
+			return true;
+		}
+
 		public void RespawnOrbAndBroadcast()
 		{
 			Vector3 newPos = GameManager.Instance.GetRandomSpawnPosition();
