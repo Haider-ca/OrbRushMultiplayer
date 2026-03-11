@@ -3,15 +3,15 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using UnityEngine;
 using OrbRush.GameLogic;
-using OrbRush.Utilities;
 using OrbRush.UI;
+using OrbRush.Utilities;
+using UnityEngine;
 
 namespace OrbRush.Networking
 {
 	// Author: Networking Team
-	// Responsibility: UDP multicast send/receive
+	// Responsibility: UDP multicast send/receive and basic loss recovery
 	public class UdpNetworkManager : MonoBehaviour
 	{
 		public static UdpNetworkManager Instance;
@@ -19,13 +19,17 @@ namespace OrbRush.Networking
 		public string multicastAddress = "230.0.0.1";
 		public int port = 11000;
 		public float joinBroadcastIntervalSeconds = 2f;
+		public float scoreBroadcastIntervalSeconds = 2f;
+		public float orbBroadcastIntervalSeconds = 2f;
 		public float remotePlayerTimeoutSeconds = 8f;
 
 		private UdpClient udpClient;
 		private IPEndPoint multicastEndPoint;
 		private Thread receiveThread;
-		private bool isRunning = false;
-		private float nextJoinBroadcastTime = 0f;
+		private bool isRunning;
+		private float nextJoinBroadcastTime;
+		private float nextScoreBroadcastTime;
+		private float nextOrbBroadcastTime;
 
 		private readonly Dictionary<int, long> lastSequenceByPlayer = new Dictionary<int, long>();
 		private readonly Dictionary<int, long> lastScoreSequenceByPlayer = new Dictionary<int, long>();
@@ -51,35 +55,47 @@ namespace OrbRush.Networking
 			udpClient = new UdpClient();
 			udpClient.ExclusiveAddressUse = false;
 
-			IPEndPoint localEp = new IPEndPoint(IPAddress.Any, port);
+			IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, port);
 			udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-			udpClient.Client.Bind(localEp);
+			udpClient.Client.Bind(localEndPoint);
 			udpClient.JoinMulticastGroup(IPAddress.Parse(multicastAddress));
 
 			multicastEndPoint = new IPEndPoint(IPAddress.Parse(multicastAddress), port);
 
 			isRunning = true;
-			receiveThread = new Thread(ReceiveLoop);
-			receiveThread.IsBackground = true;
+			receiveThread = new Thread(ReceiveLoop) { IsBackground = true };
 			receiveThread.Start();
 
 			SendJoin(localPlayerId, spawn);
 			nextJoinBroadcastTime = Time.time + joinBroadcastIntervalSeconds;
+			nextScoreBroadcastTime = Time.time + scoreBroadcastIntervalSeconds;
+			nextOrbBroadcastTime = Time.time + orbBroadcastIntervalSeconds;
 		}
 
 		private void Update()
 		{
-			if (!isRunning || joinBroadcastIntervalSeconds <= 0f)
+			if (!isRunning)
 			{
 				CleanupTimedOutRemotePlayers();
 				return;
 			}
 
-			if (Time.time >= nextJoinBroadcastTime)
+			if (joinBroadcastIntervalSeconds > 0f && Time.time >= nextJoinBroadcastTime)
 			{
-				Vector3 localPosition = GetLocalPlayerPosition();
-				SendJoin(GameManager.Instance.localPlayerId, localPosition);
+				SendJoin(GameManager.Instance.localPlayerId, GetLocalPlayerPosition());
 				nextJoinBroadcastTime = Time.time + joinBroadcastIntervalSeconds;
+			}
+
+			if (scoreBroadcastIntervalSeconds > 0f && Time.time >= nextScoreBroadcastTime)
+			{
+				BroadcastLocalScoreSnapshot();
+				nextScoreBroadcastTime = Time.time + scoreBroadcastIntervalSeconds;
+			}
+
+			if (orbBroadcastIntervalSeconds > 0f && Time.time >= nextOrbBroadcastTime)
+			{
+				BroadcastOrbSnapshot();
+				nextOrbBroadcastTime = Time.time + orbBroadcastIntervalSeconds;
 			}
 
 			CleanupTimedOutRemotePlayers();
@@ -125,7 +141,40 @@ namespace OrbRush.Networking
 				x = spawn.x,
 				y = spawn.y,
 				z = spawn.z,
-				sequence = 0
+				sequence = System.DateTime.UtcNow.Ticks
+			};
+
+			SendState(state);
+		}
+
+		private void BroadcastLocalScoreSnapshot()
+		{
+			if (ScoreManager.Instance == null || GameManager.Instance == null)
+				return;
+
+			PlayerState state = new PlayerState
+			{
+				messageType = "SCORE",
+				playerId = GameManager.Instance.localPlayerId,
+				score = ScoreManager.Instance.GetScore(GameManager.Instance.localPlayerId),
+				sequence = System.DateTime.UtcNow.Ticks
+			};
+
+			SendState(state);
+		}
+
+		private void BroadcastOrbSnapshot()
+		{
+			if (OrbSpawner.Instance == null || !OrbSpawner.Instance.TryGetCurrentOrbPosition(out Vector3 orbPosition))
+				return;
+
+			PlayerState state = new PlayerState
+			{
+				messageType = "ORB_SPAWN",
+				x = orbPosition.x,
+				y = orbPosition.y,
+				z = orbPosition.z,
+				sequence = System.DateTime.UtcNow.Ticks
 			};
 
 			SendState(state);
@@ -149,31 +198,31 @@ namespace OrbRush.Networking
 			{
 				try
 				{
-					IPEndPoint remoteEP = null;
-					byte[] data = udpClient.Receive(ref remoteEP);
+					IPEndPoint remoteEndPoint = null;
+					byte[] data = udpClient.Receive(ref remoteEndPoint);
 					string json = Encoding.UTF8.GetString(data);
 					PlayerState state = JsonUtility.FromJson<PlayerState>(json);
 
 					if (state == null)
 						continue;
 
-						if (state.playerId == GameManager.Instance.localPlayerId &&
-							state.messageType != "ORB_SPAWN" &&
-							state.messageType != "GAME_OVER")
-						{
-							continue;
-						}
-
-						if (ShouldIgnoreState(state))
-							continue;
-
-						MainThreadDispatcher.Enqueue(() => ApplyState(state));
-					}
-					catch
+					if (state.playerId == GameManager.Instance.localPlayerId &&
+						state.messageType != "ORB_SPAWN" &&
+						state.messageType != "GAME_OVER")
 					{
+						continue;
 					}
+
+					if (ShouldIgnoreState(state))
+						continue;
+
+					MainThreadDispatcher.Enqueue(() => ApplyState(state));
+				}
+				catch
+				{
 				}
 			}
+		}
 
 		private bool ShouldIgnoreState(PlayerState state)
 		{
@@ -181,7 +230,7 @@ namespace OrbRush.Networking
 			{
 				case "MOVE":
 				case "JOIN":
-					return !TryTrackLatestSequence(lastSequenceByPlayer, state.playerId, state.sequence, state.messageType == "MOVE");
+					return !TryTrackLatestSequence(lastSequenceByPlayer, state.playerId, state.sequence, true);
 
 				case "SCORE":
 					return !TryTrackLatestSequence(lastScoreSequenceByPlayer, state.playerId, state.sequence, true);
@@ -205,11 +254,7 @@ namespace OrbRush.Networking
 			}
 		}
 
-		private bool TryTrackLatestSequence(
-			Dictionary<int, long> sequenceMap,
-			int key,
-			long sequence,
-			bool rejectOlderOrDuplicate)
+		private bool TryTrackLatestSequence(Dictionary<int, long> sequenceMap, int key, long sequence, bool rejectOlderOrDuplicate)
 		{
 			if (key == 0)
 				return true;
@@ -272,6 +317,7 @@ namespace OrbRush.Networking
 		private void ApplyState(PlayerState state)
 		{
 			TrackRemotePlayerHeartbeat(state);
+
 			switch (state.messageType)
 			{
 				case "JOIN":

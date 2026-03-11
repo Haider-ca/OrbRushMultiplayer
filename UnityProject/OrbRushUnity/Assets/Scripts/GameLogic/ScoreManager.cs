@@ -73,6 +73,14 @@ namespace OrbRush.GameLogic
 			RefreshScoreUI();
 		}
 
+		public int GetScore(int playerId)
+		{
+			if (!scores.TryGetValue(playerId, out int score))
+				return 0;
+
+			return score;
+		}
+
 		public void ApplyGameOver(int winnerId)
 		{
 			if (HUDController.Instance != null)

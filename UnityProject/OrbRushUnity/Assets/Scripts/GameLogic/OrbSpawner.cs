@@ -55,5 +55,17 @@ namespace OrbRush.GameLogic
 		{
 			SpawnOrb(position);
 		}
+
+		public bool TryGetCurrentOrbPosition(out Vector3 position)
+		{
+			if (currentOrb == null)
+			{
+				position = default;
+				return false;
+			}
+
+			position = currentOrb.transform.position;
+			return true;
+		}
 	}
 }
