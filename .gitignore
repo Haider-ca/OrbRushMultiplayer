@@ -39,3 +39,5 @@ OrbRushServer/obj/
 SignalRDllHelper/bin/
 SignalRDllHelper/obj/
 SignalRDllHelper/publish/
+
+output/

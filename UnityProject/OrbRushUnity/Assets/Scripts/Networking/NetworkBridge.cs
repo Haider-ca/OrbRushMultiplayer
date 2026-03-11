@@ -19,6 +19,26 @@ namespace OrbRush.Networking
 		private void Awake()
 		{
 			Instance = this;
+
+			// Disable the network manager that is NOT selected
+			if (UdpNetworkManager.Instance != null)
+				UdpNetworkManager.Instance.gameObject.SetActive(mode == NetworkMode.UDP);
+
+			if (SignalRNetworkManager.Instance != null)
+				SignalRNetworkManager.Instance.gameObject.SetActive(mode == NetworkMode.SignalR);
+		}
+
+		private void Start()
+		{
+			// Also check after all Awake() calls have finished
+			GameObject udpObj = GameObject.Find("UdpNetworkManager");
+			GameObject signalRObj = GameObject.Find("SignalRNetworkManager");
+
+			if (udpObj != null)
+				udpObj.SetActive(mode == NetworkMode.UDP);
+
+			if (signalRObj != null)
+				signalRObj.SetActive(mode == NetworkMode.SignalR);
 		}
 
 		public void SendState(PlayerState state)
