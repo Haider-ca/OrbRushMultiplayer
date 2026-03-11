@@ -49,7 +49,7 @@ namespace OrbRushServer.Hubs
 
 		public async Task SendOrbCollect(int playerId, float x, float y, float z, long sequence)
 		{
-			await Clients.All.SendAsync("ReceiveOrbCollect", playerId, x, y, z, sequence);
+			await Clients.Others.SendAsync("ReceiveOrbCollect", playerId, x, y, z, sequence);
 		}
 
 		public async Task SendGameOver(int winnerId)

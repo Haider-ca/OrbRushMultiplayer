@@ -12,18 +12,36 @@ namespace OrbRush.GameLogic
 	{
 		public static ScoreManager Instance;
 
-		public int winScore = 5;
+		public float roundDurationSeconds = 60f;
 
 		private readonly Dictionary<int, int> scores = new Dictionary<int, int>();
+		private float remainingTime;
+		private bool roundEnded;
 
 		private void Awake()
 		{
 			Instance = this;
+			roundDurationSeconds = 60f;
+			remainingTime = roundDurationSeconds;
 		}
 
 		private void Start()
 		{
-			UpdateStatusText();
+			RefreshScoreUI();
+		}
+
+		private void Update()
+		{
+			if (roundEnded)
+				return;
+
+			remainingTime -= Time.deltaTime;
+			if (remainingTime <= 0f)
+			{
+				remainingTime = 0f;
+				EndRound();
+			}
+
 			RefreshScoreUI();
 		}
 
@@ -46,6 +64,9 @@ namespace OrbRush.GameLogic
 
 		public void AddScore(int playerId)
 		{
+			if (roundEnded)
+				return;
+
 			if (!scores.ContainsKey(playerId))
 				scores[playerId] = 0;
 
@@ -66,72 +87,68 @@ namespace OrbRush.GameLogic
 				NetworkBridge.Instance.SendState(state);
 			}
 
-			if (scores[playerId] >= winScore)
-			{
-				if (HUDController.Instance != null)
-					HUDController.Instance.SetStatusText("Player " + playerId + " wins!");
-
-				if (NetworkBridge.Instance != null)
-				{
-					PlayerState state = new PlayerState
-					{
-						messageType = "GAME_OVER",
-						winnerId = playerId,
-						sequence = System.DateTime.UtcNow.Ticks
-					};
-
-					NetworkBridge.Instance.SendState(state);
-				}
-			}
-			else
-			{
-				UpdateStatusText();
-			}
 		}
 
-		public void ApplyOrbCollected(int playerId, Vector3 newOrbPosition)
+		public void ApplyOrbCollected(int playerId)
 		{
+			if (roundEnded)
+				return;
+
 			if (!scores.ContainsKey(playerId))
 				scores[playerId] = 0;
 
 			scores[playerId]++;
 			RefreshScoreUI();
-			OrbSpawner.Instance?.ApplyRemoteOrbSpawn(newOrbPosition);
-
-			if (scores[playerId] >= winScore)
-			{
-				if (HUDController.Instance != null)
-					HUDController.Instance.SetStatusText("Player " + playerId + " wins!");
-
-				if (playerId == GameManager.Instance.localPlayerId && NetworkBridge.Instance != null)
-				{
-					PlayerState state = new PlayerState
-					{
-						messageType = "GAME_OVER",
-						winnerId = playerId,
-						sequence = System.DateTime.UtcNow.Ticks
-					};
-
-					NetworkBridge.Instance.SendState(state);
-				}
-			}
-			else
-			{
-				UpdateStatusText();
-			}
 		}
 
 		public void SetRemoteScore(int playerId, int score)
 		{
 			scores[playerId] = score;
 			RefreshScoreUI();
-			UpdateStatusText();
 		}
 
 		public void ApplyGameOver(int winnerId)
 		{
-			if (HUDController.Instance != null)
-				HUDController.Instance.SetStatusText("Player " + winnerId + " wins!");
+			roundEnded = true;
+			remainingTime = 0f;
+			RefreshScoreUI();
+		}
+
+		public bool IsRoundEnded()
+		{
+			return roundEnded;
+		}
+
+		public string GetWinnerSummary()
+		{
+			return GetWinnerText();
+		}
+
+		public string GetScoreboardSummary()
+		{
+			StringBuilder sb = new StringBuilder();
+
+			foreach (KeyValuePair<int, int> entry in scores)
+				sb.AppendLine("Player " + entry.Key + ": " + entry.Value);
+
+			return sb.ToString().TrimEnd();
+		}
+
+		public void RestartRound()
+		{
+			List<int> playerIds = new List<int>(scores.Keys);
+
+			scores.Clear();
+			foreach (int playerId in playerIds)
+				scores[playerId] = 0;
+
+			remainingTime = roundDurationSeconds;
+			roundEnded = false;
+
+			OrbSpawner.Instance?.ApplyRemoteOrbSpawn(
+				GameManager.Instance.GetRandomSpawnPosition());
+
+			RefreshScoreUI();
 		}
 
 		private void RefreshScoreUI()
@@ -143,7 +160,7 @@ namespace OrbRush.GameLogic
 			int localPlayerId = GameManager.Instance != null ? GameManager.Instance.localPlayerId : 0;
 			int localScore = scores.ContainsKey(localPlayerId) ? scores[localPlayerId] : 0;
 
-			sb.AppendLine("First to " + winScore + " points wins");
+			sb.AppendLine("Time Left: " + FormatTime(remainingTime));
 			sb.AppendLine("My Score: " + localScore);
 			sb.AppendLine("Scores");
 
@@ -152,15 +169,69 @@ namespace OrbRush.GameLogic
 				sb.AppendLine("Player " + kv.Key + ": " + kv.Value);
 			}
 
+			if (roundEnded)
+				sb.AppendLine(GetWinnerText());
+
 			HUDController.Instance.SetScoreText(sb.ToString());
+			HUDController.Instance.SetStatusText(string.Empty);
 		}
 
-		private void UpdateStatusText()
+		private void EndRound()
 		{
-			if (HUDController.Instance == null)
+			if (roundEnded)
 				return;
 
-			HUDController.Instance.SetStatusText("Game ends when a player reaches " + winScore + " points");
+			roundEnded = true;
+
+			int winnerId = GetWinnerId();
+			if (winnerId != 0 && NetworkBridge.Instance != null)
+			{
+				PlayerState state = new PlayerState
+				{
+					messageType = "GAME_OVER",
+					winnerId = winnerId,
+					sequence = System.DateTime.UtcNow.Ticks
+				};
+
+				NetworkBridge.Instance.SendState(state);
+			}
+
+			RefreshScoreUI();
+		}
+
+		private int GetWinnerId()
+		{
+			int winnerId = 0;
+			int bestScore = int.MinValue;
+
+			foreach (KeyValuePair<int, int> entry in scores)
+			{
+				if (entry.Value > bestScore)
+				{
+					bestScore = entry.Value;
+					winnerId = entry.Key;
+				}
+			}
+
+			return winnerId;
+		}
+
+		private string GetWinnerText()
+		{
+			if (scores.Count == 0)
+				return "Winner: None";
+
+			int winnerId = GetWinnerId();
+			int winnerScore = scores.ContainsKey(winnerId) ? scores[winnerId] : 0;
+			return "Winner: Player " + winnerId + " (" + winnerScore + ")";
+		}
+
+		private static string FormatTime(float timeSeconds)
+		{
+			int totalSeconds = Mathf.CeilToInt(Mathf.Max(0f, timeSeconds));
+			int minutes = totalSeconds / 60;
+			int seconds = totalSeconds % 60;
+			return minutes.ToString("00") + ":" + seconds.ToString("00");
 		}
 	}
 }

@@ -122,8 +122,7 @@ namespace OrbRush.Networking
 
 					if (state.playerId == GameManager.Instance.localPlayerId &&
 						state.messageType != "ORB_SPAWN" &&
-						state.messageType != "GAME_OVER" &&
-						state.messageType != "ORB_COLLECT")
+						state.messageType != "GAME_OVER")
 					{
 						continue;
 					}
@@ -187,9 +186,10 @@ namespace OrbRush.Networking
 					break;
 
 				case "ORB_COLLECT":
-					ScoreManager.Instance.ApplyOrbCollected(
-						state.playerId,
+					OrbSpawner.Instance.ApplyRemoteOrbSpawn(
 						new Vector3(state.x, state.y, state.z));
+					ScoreManager.Instance.ApplyOrbCollected(
+						state.playerId);
 					break;
 
 				case "GAME_OVER":

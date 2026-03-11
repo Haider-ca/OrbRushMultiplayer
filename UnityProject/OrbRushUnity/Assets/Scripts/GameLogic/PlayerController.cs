@@ -10,6 +10,10 @@ namespace OrbRush.GameLogic
 		public int playerId;
 		public bool isLocalPlayer;
 		public float moveSpeed = 5f;
+		public float playfieldMinX = -9.5f;
+		public float playfieldMaxX = 9.5f;
+		public float playfieldMinZ = -9.5f;
+		public float playfieldMaxZ = 9.5f;
 
 		private long sequenceNumber = 0;
 		private Vector3 lastSentPosition;
@@ -24,11 +28,15 @@ namespace OrbRush.GameLogic
 			if (!isLocalPlayer)
 				return;
 
+			if (ScoreManager.Instance != null && ScoreManager.Instance.IsRoundEnded())
+				return;
+
 			float h = Input.GetAxis("Horizontal");
 			float v = Input.GetAxis("Vertical");
 
 			Vector3 move = new Vector3(h, 0f, v);
 			transform.Translate(move * moveSpeed * Time.deltaTime, Space.World);
+			WrapPosition();
 
 			if (Vector3.Distance(transform.position, lastSentPosition) > 0.02f)
 			{
@@ -53,6 +61,23 @@ namespace OrbRush.GameLogic
 			};
 
 			NetworkBridge.Instance.SendState(state);
+		}
+
+		private void WrapPosition()
+		{
+			Vector3 position = transform.position;
+
+			if (position.x < playfieldMinX)
+				position.x = playfieldMaxX;
+			else if (position.x > playfieldMaxX)
+				position.x = playfieldMinX;
+
+			if (position.z < playfieldMinZ)
+				position.z = playfieldMaxZ;
+			else if (position.z > playfieldMaxZ)
+				position.z = playfieldMinZ;
+
+			transform.position = position;
 		}
 	}
 }

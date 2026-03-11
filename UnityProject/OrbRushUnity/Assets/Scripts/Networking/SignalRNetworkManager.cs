@@ -134,9 +134,10 @@ namespace OrbRush.Networking
 				{
 					MainThreadDispatcher.Enqueue(() =>
 					{
-						ScoreManager.Instance.ApplyOrbCollected(
-							playerId,
+						OrbSpawner.Instance.ApplyRemoteOrbSpawn(
 							new Vector3(x, y, z));
+						ScoreManager.Instance.ApplyOrbCollected(
+							playerId);
 					});
 				});
 

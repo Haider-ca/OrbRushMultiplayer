@@ -20,6 +20,9 @@ namespace OrbRush.GameLogic
 					return;
 
 				Vector3 newOrbPosition = GameManager.Instance.GetRandomSpawnPosition();
+				OrbSpawner.Instance.ApplyRemoteOrbSpawn(newOrbPosition);
+				ScoreManager.Instance?.ApplyOrbCollected(controller.playerId);
+
 				PlayerState state = new PlayerState
 				{
 					messageType = "ORB_COLLECT",
