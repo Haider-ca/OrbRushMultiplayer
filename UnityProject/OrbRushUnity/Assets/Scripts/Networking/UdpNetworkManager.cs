@@ -19,17 +19,19 @@ namespace OrbRush.Networking
 		public string multicastAddress = "230.0.0.1";
 		public int port = 11000;
 		public float joinBroadcastIntervalSeconds = 2f;
+		public float remotePlayerTimeoutSeconds = 8f;
 
 		private UdpClient udpClient;
 		private IPEndPoint multicastEndPoint;
 		private Thread receiveThread;
-			private bool isRunning = false;
-			private float nextJoinBroadcastTime = 0f;
+		private bool isRunning = false;
+		private float nextJoinBroadcastTime = 0f;
 
-			private readonly Dictionary<int, long> lastSequenceByPlayer = new Dictionary<int, long>();
-			private readonly Dictionary<int, long> lastScoreSequenceByPlayer = new Dictionary<int, long>();
-			private long lastOrbSpawnSequence = -1;
-			private long lastGameOverSequence = -1;
+		private readonly Dictionary<int, long> lastSequenceByPlayer = new Dictionary<int, long>();
+		private readonly Dictionary<int, long> lastScoreSequenceByPlayer = new Dictionary<int, long>();
+		private readonly Dictionary<int, float> lastSeenTimeByPlayer = new Dictionary<int, float>();
+		private long lastOrbSpawnSequence = -1;
+		private long lastGameOverSequence = -1;
 
 		private void Awake()
 		{
@@ -68,14 +70,19 @@ namespace OrbRush.Networking
 		private void Update()
 		{
 			if (!isRunning || joinBroadcastIntervalSeconds <= 0f)
+			{
+				CleanupTimedOutRemotePlayers();
 				return;
+			}
 
-			if (Time.time < nextJoinBroadcastTime)
-				return;
+			if (Time.time >= nextJoinBroadcastTime)
+			{
+				Vector3 localPosition = GetLocalPlayerPosition();
+				SendJoin(GameManager.Instance.localPlayerId, localPosition);
+				nextJoinBroadcastTime = Time.time + joinBroadcastIntervalSeconds;
+			}
 
-			Vector3 localPosition = GetLocalPlayerPosition();
-			SendJoin(GameManager.Instance.localPlayerId, localPosition);
-			nextJoinBroadcastTime = Time.time + joinBroadcastIntervalSeconds;
+			CleanupTimedOutRemotePlayers();
 		}
 
 		private void OnDestroy()
@@ -162,66 +169,109 @@ namespace OrbRush.Networking
 
 						MainThreadDispatcher.Enqueue(() => ApplyState(state));
 					}
-				catch
-				{
+					catch
+					{
 					}
 				}
 			}
 
-			private bool ShouldIgnoreState(PlayerState state)
+		private bool ShouldIgnoreState(PlayerState state)
+		{
+			switch (state.messageType)
 			{
-				switch (state.messageType)
-				{
-					case "MOVE":
-					case "JOIN":
-						return !TryTrackLatestSequence(lastSequenceByPlayer, state.playerId, state.sequence, state.messageType == "MOVE");
+				case "MOVE":
+				case "JOIN":
+					return !TryTrackLatestSequence(lastSequenceByPlayer, state.playerId, state.sequence, state.messageType == "MOVE");
 
-					case "SCORE":
-						return !TryTrackLatestSequence(lastScoreSequenceByPlayer, state.playerId, state.sequence, true);
+				case "SCORE":
+					return !TryTrackLatestSequence(lastScoreSequenceByPlayer, state.playerId, state.sequence, true);
 
-					case "ORB_SPAWN":
-						if (state.sequence <= lastOrbSpawnSequence)
-							return true;
+				case "ORB_SPAWN":
+					if (state.sequence <= lastOrbSpawnSequence)
+						return true;
 
-						lastOrbSpawnSequence = state.sequence;
-						return false;
-
-					case "GAME_OVER":
-						if (state.sequence <= lastGameOverSequence)
-							return true;
-
-						lastGameOverSequence = state.sequence;
-						return false;
-
-					default:
-						return false;
-				}
-			}
-
-			private bool TryTrackLatestSequence(
-				Dictionary<int, long> sequenceMap,
-				int key,
-				long sequence,
-				bool rejectOlderOrDuplicate)
-			{
-				if (key == 0)
-					return true;
-
-				if (!sequenceMap.ContainsKey(key))
-				{
-					sequenceMap[key] = sequence;
-					return true;
-				}
-
-				if (rejectOlderOrDuplicate && sequence <= sequenceMap[key])
+					lastOrbSpawnSequence = state.sequence;
 					return false;
 
+				case "GAME_OVER":
+					if (state.sequence <= lastGameOverSequence)
+						return true;
+
+					lastGameOverSequence = state.sequence;
+					return false;
+
+				default:
+					return false;
+			}
+		}
+
+		private bool TryTrackLatestSequence(
+			Dictionary<int, long> sequenceMap,
+			int key,
+			long sequence,
+			bool rejectOlderOrDuplicate)
+		{
+			if (key == 0)
+				return true;
+
+			if (!sequenceMap.ContainsKey(key))
+			{
 				sequenceMap[key] = sequence;
 				return true;
 			}
 
-			private void ApplyState(PlayerState state)
+			if (rejectOlderOrDuplicate && sequence <= sequenceMap[key])
+				return false;
+
+			sequenceMap[key] = sequence;
+			return true;
+		}
+
+		private void CleanupTimedOutRemotePlayers()
+		{
+			if (remotePlayerTimeoutSeconds <= 0f || GameManager.Instance == null)
+				return;
+
+			List<int> timedOutPlayers = null;
+			foreach (KeyValuePair<int, float> entry in lastSeenTimeByPlayer)
 			{
+				if (Time.time - entry.Value <= remotePlayerTimeoutSeconds)
+					continue;
+
+				timedOutPlayers ??= new List<int>();
+				timedOutPlayers.Add(entry.Key);
+			}
+
+			if (timedOutPlayers == null)
+				return;
+
+			foreach (int playerId in timedOutPlayers)
+			{
+				lastSeenTimeByPlayer.Remove(playerId);
+				lastSequenceByPlayer.Remove(playerId);
+				lastScoreSequenceByPlayer.Remove(playerId);
+				GameManager.Instance.RemoveRemotePlayer(playerId);
+			}
+		}
+
+		private void TrackRemotePlayerHeartbeat(PlayerState state)
+		{
+			if (state.playerId == 0 || state.playerId == GameManager.Instance.localPlayerId)
+				return;
+
+			switch (state.messageType)
+			{
+				case "JOIN":
+				case "MOVE":
+				case "SCORE":
+					lastSeenTimeByPlayer[state.playerId] = Time.time;
+					break;
+			}
+		}
+
+		private void ApplyState(PlayerState state)
+		{
+			TrackRemotePlayerHeartbeat(state);
 			switch (state.messageType)
 			{
 				case "JOIN":

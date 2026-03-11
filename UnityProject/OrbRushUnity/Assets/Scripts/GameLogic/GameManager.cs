@@ -60,6 +60,18 @@ namespace OrbRush.GameLogic
 			players[playerId].transform.position = position;
 		}
 
+		public void RemoveRemotePlayer(int playerId)
+		{
+			if (playerId == localPlayerId)
+				return;
+
+			if (!players.TryGetValue(playerId, out GameObject player))
+				return;
+
+			players.Remove(playerId);
+			Destroy(player);
+		}
+
 		public Vector3 GetRandomSpawnPosition()
 		{
 			return new Vector3(Random.Range(-6f, 6f), 5f, Random.Range(-6f, 6f));
