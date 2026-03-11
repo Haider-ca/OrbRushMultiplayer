@@ -6,7 +6,7 @@ using OrbRush.UI;
 
 namespace OrbRush.GameLogic
 {
-	// Author: Haider
+	// Author: Haider, Jerry(Edit)
 	// Responsibility: Track scores and game-over state
 	public class ScoreManager : MonoBehaviour
 	{
@@ -35,7 +35,7 @@ namespace OrbRush.GameLogic
 
 			RefreshScoreUI();
 
-			if (UdpNetworkManager.Instance != null)
+			if (NetworkBridge.Instance != null)
 			{
 				PlayerState state = new PlayerState
 				{
@@ -45,7 +45,7 @@ namespace OrbRush.GameLogic
 					sequence = System.DateTime.UtcNow.Ticks
 				};
 
-				UdpNetworkManager.Instance.SendState(state);
+				NetworkBridge.Instance.SendState(state);
 			}
 
 			if (scores[playerId] >= winScore)
@@ -53,7 +53,7 @@ namespace OrbRush.GameLogic
 				if (HUDController.Instance != null)
 					HUDController.Instance.SetStatusText("Player " + playerId + " wins!");
 
-				if (UdpNetworkManager.Instance != null)
+				if (NetworkBridge.Instance != null)
 				{
 					PlayerState state = new PlayerState
 					{
@@ -62,7 +62,7 @@ namespace OrbRush.GameLogic
 						sequence = System.DateTime.UtcNow.Ticks
 					};
 
-					UdpNetworkManager.Instance.SendState(state);
+					NetworkBridge.Instance.SendState(state);
 				}
 			}
 		}
