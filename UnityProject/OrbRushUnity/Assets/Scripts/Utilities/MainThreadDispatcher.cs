@@ -1,0 +1,32 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace OrbRush.Utilities
+{
+	// Author: Team
+	// Responsibility: Run network updates on Unity main thread
+	public class MainThreadDispatcher : MonoBehaviour
+	{
+		private static readonly Queue<Action> actions = new Queue<Action>();
+
+		public static void Enqueue(Action action)
+		{
+			lock (actions)
+			{
+				actions.Enqueue(action);
+			}
+		}
+
+		private void Update()
+		{
+			lock (actions)
+			{
+				while (actions.Count > 0)
+				{
+					actions.Dequeue()?.Invoke();
+				}
+			}
+		}
+	}
+}
