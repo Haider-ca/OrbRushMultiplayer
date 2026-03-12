@@ -14,7 +14,7 @@ namespace OrbRush.GameLogic
 
 		public int localPlayerId;
 
-		private readonly Dictionary<int, GameObject> players = new Dictionary<int, GameObject>();
+		private readonly Dictionary<int, GameObject> _players = new Dictionary<int, GameObject>();
 
 		private void Awake()
 		{
@@ -25,7 +25,7 @@ namespace OrbRush.GameLogic
 		{
 			localPlayerId = playerId;
 
-			if (players.ContainsKey(playerId))
+			if (_players.ContainsKey(playerId))
 				return;
 
 			GameObject player = Instantiate(localPlayerPrefab, position, Quaternion.identity);
@@ -33,13 +33,13 @@ namespace OrbRush.GameLogic
 			controller.playerId = playerId;
 			controller.isLocalPlayer = true;
 
-			players[playerId] = player;
+			_players[playerId] = player;
 			ScoreManager.Instance?.RegisterPlayer(playerId);
 		}
 
 		public void SpawnRemotePlayer(int playerId, Vector3 position)
 		{
-			if (players.ContainsKey(playerId))
+			if (_players.ContainsKey(playerId))
 				return;
 
 			GameObject player = Instantiate(remotePlayerPrefab, position, Quaternion.identity);
@@ -47,7 +47,7 @@ namespace OrbRush.GameLogic
 			controller.playerId = playerId;
 			controller.isLocalPlayer = false;
 
-			players[playerId] = player;
+			_players[playerId] = player;
 			ScoreManager.Instance?.RegisterPlayer(playerId);
 		}
 
@@ -56,10 +56,10 @@ namespace OrbRush.GameLogic
 			if (playerId == localPlayerId)
 				return;
 
-			if (!players.ContainsKey(playerId))
+			if (!_players.ContainsKey(playerId))
 				SpawnRemotePlayer(playerId, position);
 
-			players[playerId].transform.position = position;
+			_players[playerId].transform.position = position;
 		}
 
 		public void RemoveRemotePlayer(int playerId)
@@ -67,11 +67,8 @@ namespace OrbRush.GameLogic
 			if (playerId == localPlayerId)
 				return;
 
-			if (!players.TryGetValue(playerId, out GameObject player))
-				return;
-
-			players.Remove(playerId);
-			Destroy(player);
+			if (_players.Remove(playerId, out GameObject player))
+				Destroy(player);
 			ScoreManager.Instance?.RemovePlayer(playerId);
 		}
 

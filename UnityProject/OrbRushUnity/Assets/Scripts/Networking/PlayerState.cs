@@ -1,5 +1,7 @@
 namespace OrbRush.Networking
 {
+	// Author: Networking Team
+	// Responsibility: Serializable data structure for network messages
 	[System.Serializable]
 	public class PlayerState
 	{

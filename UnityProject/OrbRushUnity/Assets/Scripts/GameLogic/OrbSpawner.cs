@@ -11,7 +11,7 @@ namespace OrbRush.GameLogic
 
 		public GameObject orbPrefab;
 
-		private GameObject currentOrb;
+		private GameObject _currentOrb;
 
 		private void Awake()
 		{
@@ -23,21 +23,21 @@ namespace OrbRush.GameLogic
 			SpawnOrb(GameManager.Instance.GetRandomSpawnPosition());
 		}
 
-		public void SpawnOrb(Vector3 position)
+		private void SpawnOrb(Vector3 position)
 		{
-			if (currentOrb != null)
-				Destroy(currentOrb);
+			if (_currentOrb)
+				Destroy(_currentOrb);
 
-			currentOrb = Instantiate(orbPrefab, position, Quaternion.identity);
+			_currentOrb = Instantiate(orbPrefab, position, Quaternion.identity);
 		}
 
 		public bool ConsumeCurrentOrb()
 		{
-			if (currentOrb == null)
+			if (!_currentOrb)
 				return false;
 
-			Destroy(currentOrb);
-			currentOrb = null;
+			Destroy(_currentOrb);
+			_currentOrb = null;
 			return true;
 		}
 
@@ -46,19 +46,19 @@ namespace OrbRush.GameLogic
 			Vector3 newPos = GameManager.Instance.GetRandomSpawnPosition();
 			SpawnOrb(newPos);
 
-			if (NetworkBridge.Instance != null)
-			{
-				PlayerState state = new PlayerState
-				{
-					messageType = "ORB_SPAWN",
-					x = newPos.x,
-					y = newPos.y,
-					z = newPos.z,
-					sequence = System.DateTime.UtcNow.Ticks
-				};
+			if (!NetworkBridge.Instance)
+				return;
 
-				NetworkBridge.Instance.SendState(state);
-			}
+			PlayerState state = new PlayerState
+			{
+				messageType = "ORB_SPAWN",
+				x = newPos.x,
+				y = newPos.y,
+				z = newPos.z,
+				sequence = System.DateTime.UtcNow.Ticks
+			};
+
+			NetworkBridge.Instance.SendState(state);
 		}
 
 		public void ApplyRemoteOrbSpawn(Vector3 position)
@@ -68,13 +68,13 @@ namespace OrbRush.GameLogic
 
 		public bool TryGetCurrentOrbPosition(out Vector3 position)
 		{
-			if (currentOrb == null)
+			if (!_currentOrb)
 			{
 				position = default;
 				return false;
 			}
 
-			position = currentOrb.transform.position;
+			position = _currentOrb.transform.position;
 			return true;
 		}
 	}

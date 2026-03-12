@@ -15,12 +15,12 @@ namespace OrbRush.GameLogic
 		public float playfieldMinZ = -9.5f;
 		public float playfieldMaxZ = 9.5f;
 
-		private long sequenceNumber = 0;
-		private Vector3 lastSentPosition;
+		private long _sequenceNumber;
+		private Vector3 _lastSentPosition;
 
 		private void Start()
 		{
-			lastSentPosition = transform.position;
+			_lastSentPosition = transform.position;
 		}
 
 		private void Update()
@@ -28,26 +28,26 @@ namespace OrbRush.GameLogic
 			if (!isLocalPlayer)
 				return;
 
-			if (ScoreManager.Instance != null && ScoreManager.Instance.IsRoundEnded())
+			if (ScoreManager.Instance && ScoreManager.Instance.IsRoundEnded())
 				return;
 
 			float h = Input.GetAxis("Horizontal");
 			float v = Input.GetAxis("Vertical");
 
 			Vector3 move = new Vector3(h, 0f, v);
-			transform.Translate(move * moveSpeed * Time.deltaTime, Space.World);
+			transform.Translate(move * (moveSpeed * Time.deltaTime), Space.World);
 			WrapPosition();
 
-			if (Vector3.Distance(transform.position, lastSentPosition) > 0.02f)
+			if (Vector3.Distance(transform.position, _lastSentPosition) > 0.02f)
 			{
 				SendMove();
-				lastSentPosition = transform.position;
+				_lastSentPosition = transform.position;
 			}
 		}
 
 		private void SendMove()
 		{
-			if (NetworkBridge.Instance == null)
+			if (!NetworkBridge.Instance)
 				return;
 
 			PlayerState state = new PlayerState
@@ -57,7 +57,7 @@ namespace OrbRush.GameLogic
 				x = transform.position.x,
 				y = transform.position.y,
 				z = transform.position.z,
-				sequence = sequenceNumber++
+				sequence = _sequenceNumber++
 			};
 
 			NetworkBridge.Instance.SendState(state);
