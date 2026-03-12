@@ -7,7 +7,7 @@ using OrbRush.UI;
 namespace OrbRush.GameLogic
 {
 	// Author: Haider, Jerry(Edit)
-	// Responsibility: Track scores and game-over state
+	// Responsibility: Track scores, round timer, and game-over state
 	public class ScoreManager : MonoBehaviour
 	{
 		public static ScoreManager Instance;
@@ -17,6 +17,7 @@ namespace OrbRush.GameLogic
 		private readonly Dictionary<int, int> scores = new Dictionary<int, int>();
 		private float remainingTime;
 		private bool roundEnded;
+		private int currentWinnerId;
 
 		private void Awake()
 		{
@@ -71,7 +72,6 @@ namespace OrbRush.GameLogic
 				scores[playerId] = 0;
 
 			scores[playerId]++;
-
 			RefreshScoreUI();
 
 			if (NetworkBridge.Instance != null)
@@ -86,7 +86,6 @@ namespace OrbRush.GameLogic
 
 				NetworkBridge.Instance.SendState(state);
 			}
-
 		}
 
 		public void ApplyOrbCollected(int playerId)
@@ -107,11 +106,26 @@ namespace OrbRush.GameLogic
 			RefreshScoreUI();
 		}
 
+		public int GetScore(int playerId)
+		{
+			if (!scores.TryGetValue(playerId, out int score))
+				return 0;
+
+			return score;
+		}
+
 		public void ApplyGameOver(int winnerId)
 		{
 			roundEnded = true;
 			remainingTime = 0f;
+			currentWinnerId = winnerId;
 			RefreshScoreUI();
+		}
+
+		public bool TryGetGameOverWinner(out int winnerId)
+		{
+			winnerId = currentWinnerId;
+			return roundEnded;
 		}
 
 		public bool IsRoundEnded()
@@ -144,9 +158,9 @@ namespace OrbRush.GameLogic
 
 			remainingTime = roundDurationSeconds;
 			roundEnded = false;
+			currentWinnerId = 0;
 
-			OrbSpawner.Instance?.ApplyRemoteOrbSpawn(
-				GameManager.Instance.GetRandomSpawnPosition());
+			OrbSpawner.Instance?.ApplyRemoteOrbSpawn(GameManager.Instance.GetRandomSpawnPosition());
 
 			RefreshScoreUI();
 		}
@@ -164,10 +178,8 @@ namespace OrbRush.GameLogic
 			sb.AppendLine("My Score: " + localScore);
 			sb.AppendLine("Scores");
 
-			foreach (var kv in scores)
-			{
-				sb.AppendLine("Player " + kv.Key + ": " + kv.Value);
-			}
+			foreach (KeyValuePair<int, int> entry in scores)
+				sb.AppendLine("Player " + entry.Key + ": " + entry.Value);
 
 			if (roundEnded)
 				sb.AppendLine(GetWinnerText());
@@ -182,14 +194,14 @@ namespace OrbRush.GameLogic
 				return;
 
 			roundEnded = true;
+			currentWinnerId = GetWinnerId();
 
-			int winnerId = GetWinnerId();
-			if (winnerId != 0 && NetworkBridge.Instance != null)
+			if (currentWinnerId != 0 && NetworkBridge.Instance != null)
 			{
 				PlayerState state = new PlayerState
 				{
 					messageType = "GAME_OVER",
-					winnerId = winnerId,
+					winnerId = currentWinnerId,
 					sequence = System.DateTime.UtcNow.Ticks
 				};
 
@@ -218,12 +230,11 @@ namespace OrbRush.GameLogic
 
 		private string GetWinnerText()
 		{
-			if (scores.Count == 0)
+			if (scores.Count == 0 || currentWinnerId == 0)
 				return "Winner: None";
 
-			int winnerId = GetWinnerId();
-			int winnerScore = scores.ContainsKey(winnerId) ? scores[winnerId] : 0;
-			return "Winner: Player " + winnerId + " (" + winnerScore + ")";
+			int winnerScore = scores.ContainsKey(currentWinnerId) ? scores[currentWinnerId] : 0;
+			return "Winner: Player " + currentWinnerId + " (" + winnerScore + ")";
 		}
 
 		private static string FormatTime(float timeSeconds)

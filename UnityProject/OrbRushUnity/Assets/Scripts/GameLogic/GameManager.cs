@@ -64,11 +64,14 @@ namespace OrbRush.GameLogic
 
 		public void RemoveRemotePlayer(int playerId)
 		{
-			if (playerId == localPlayerId || !players.ContainsKey(playerId))
+			if (playerId == localPlayerId)
 				return;
 
-			Destroy(players[playerId]);
+			if (!players.TryGetValue(playerId, out GameObject player))
+				return;
+
 			players.Remove(playerId);
+			Destroy(player);
 			ScoreManager.Instance?.RemovePlayer(playerId);
 		}
 
