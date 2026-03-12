@@ -34,7 +34,8 @@ namespace OrbRush.Networking
 		private float nextOrbBroadcastTime;
 		private float nextGameOverBroadcastTime;
 
-		private readonly Dictionary<int, long> lastSequenceByPlayer = new Dictionary<int, long>();
+		private readonly Dictionary<int, long> lastMoveSequenceByPlayer = new Dictionary<int, long>();
+		private readonly Dictionary<int, long> lastMembershipSequenceByPlayer = new Dictionary<int, long>();
 		private readonly Dictionary<int, long> lastScoreSequenceByPlayer = new Dictionary<int, long>();
 		private readonly Dictionary<int, float> lastSeenTimeByPlayer = new Dictionary<int, float>();
 		private long lastOrbSpawnSequence = -1;
@@ -283,9 +284,11 @@ namespace OrbRush.Networking
 			switch (state.messageType)
 			{
 				case "MOVE":
+					return !TryTrackLatestSequence(lastMoveSequenceByPlayer, state.playerId, state.sequence, true);
+
 				case "JOIN":
 				case "LEAVE":
-					return !TryTrackLatestSequence(lastSequenceByPlayer, state.playerId, state.sequence, true);
+					return !TryTrackLatestSequence(lastMembershipSequenceByPlayer, state.playerId, state.sequence, true);
 
 				case "SCORE":
 					return !TryTrackLatestSequence(lastScoreSequenceByPlayer, state.playerId, state.sequence, true);
@@ -355,7 +358,8 @@ namespace OrbRush.Networking
 				return;
 
 			lastSeenTimeByPlayer.Remove(playerId);
-			lastSequenceByPlayer.Remove(playerId);
+			lastMoveSequenceByPlayer.Remove(playerId);
+			lastMembershipSequenceByPlayer.Remove(playerId);
 			lastScoreSequenceByPlayer.Remove(playerId);
 			GameManager.Instance.RemoveRemotePlayer(playerId);
 		}
