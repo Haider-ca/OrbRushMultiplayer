@@ -12,7 +12,7 @@ namespace OrbRush.Networking
 {
 	// Author: Networking Team
 	// Responsibility: UDP multicast send/receive and basic loss recovery
-	public class UdpNetworkManager : MonoBehaviour
+	public class UdpNetworkManager : MonoBehaviour, INetworkSender
 	{
 		public static UdpNetworkManager Instance;
 
@@ -49,6 +49,9 @@ namespace OrbRush.Networking
 
 		private void Start()
 		{
+			if (NetworkBridge.Instance != null)
+				NetworkBridge.Instance.RegisterSender(this);
+
 			int localPlayerId = Random.Range(1000, 9999);
 			Vector3 spawn = new Vector3(Random.Range(-6f, 6f), 5f, Random.Range(-6f, 6f));
 
