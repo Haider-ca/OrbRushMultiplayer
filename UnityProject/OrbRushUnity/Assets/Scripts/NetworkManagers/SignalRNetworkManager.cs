@@ -10,7 +10,7 @@ namespace OrbRush.Networking
 {
 	// Author: Jerry
 	// Responsibility: SignalR/WebSocket client that replaces UDP for internet play
-	public class SignalRNetworkManager : MonoBehaviour
+	public class SignalRNetworkManager : MonoBehaviour, INetworkSender
 	{
 		public static SignalRNetworkManager Instance;
 
@@ -28,6 +28,9 @@ namespace OrbRush.Networking
 
 		private async void Start()
 		{
+			if (NetworkBridge.Instance != null)
+				NetworkBridge.Instance.RegisterSender(this);
+
 			localPlayerId = UnityEngine.Random.Range(1000, 9999);
 			localSpawnPosition = new Vector3(
 				UnityEngine.Random.Range(-6f, 6f),
