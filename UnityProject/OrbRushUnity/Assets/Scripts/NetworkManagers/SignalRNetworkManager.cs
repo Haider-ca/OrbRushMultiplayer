@@ -28,7 +28,7 @@ namespace OrbRush.Networking
 
 		private async void Start()
 		{
-			if (NetworkBridge.Instance != null)
+			if (NetworkBridge.Instance)
 				NetworkBridge.Instance.RegisterSender(this);
 
 			localPlayerId = UnityEngine.Random.Range(1000, 9999);
@@ -39,7 +39,7 @@ namespace OrbRush.Networking
 
 			GameManager.Instance.SpawnLocalPlayer(localPlayerId, localSpawnPosition);
 
-			if (HUDController.Instance != null)
+			if (HUDController.Instance)
 					HUDController.Instance.SetStatusText("Local Player ID: " + localPlayerId + " (SignalR)");
 
 			connection = new HubConnectionBuilder()
@@ -60,7 +60,7 @@ namespace OrbRush.Networking
 			catch (Exception ex)
 			{
 				Debug.LogError("[SignalR] Connection failed: " + ex.Message);
-				if (HUDController.Instance != null)
+				if (HUDController.Instance)
 					HUDController.Instance.SetStatusText("SignalR connection failed!");
 			}
 

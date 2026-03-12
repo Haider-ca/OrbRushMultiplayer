@@ -11,30 +11,30 @@ namespace OrbRush.GameLogic
 		{
 			PlayerController controller = GetComponent<PlayerController>();
 
-			if (controller == null || !controller.isLocalPlayer)
+			if (!controller || !controller.isLocalPlayer)
 				return;
 
-			if (other.CompareTag("Orb"))
+			if (!other.CompareTag("Orb"))
+				return;
+
+			if (!OrbSpawner.Instance || !OrbSpawner.Instance.ConsumeCurrentOrb())
+				return;
+
+			Vector3 newOrbPosition = GameManager.Instance.GetRandomSpawnPosition();
+			OrbSpawner.Instance.ApplyRemoteOrbSpawn(newOrbPosition);
+			ScoreManager.Instance?.ApplyOrbCollected(controller.playerId);
+
+			PlayerState state = new PlayerState
 			{
-				if (OrbSpawner.Instance == null || !OrbSpawner.Instance.ConsumeCurrentOrb())
-					return;
+				messageType = "ORB_COLLECT",
+				playerId = controller.playerId,
+				x = newOrbPosition.x,
+				y = newOrbPosition.y,
+				z = newOrbPosition.z,
+				sequence = System.DateTime.UtcNow.Ticks
+			};
 
-				Vector3 newOrbPosition = GameManager.Instance.GetRandomSpawnPosition();
-				OrbSpawner.Instance.ApplyRemoteOrbSpawn(newOrbPosition);
-				ScoreManager.Instance?.ApplyOrbCollected(controller.playerId);
-
-				PlayerState state = new PlayerState
-				{
-					messageType = "ORB_COLLECT",
-					playerId = controller.playerId,
-					x = newOrbPosition.x,
-					y = newOrbPosition.y,
-					z = newOrbPosition.z,
-					sequence = System.DateTime.UtcNow.Ticks
-				};
-
-				NetworkBridge.Instance?.SendState(state);
-			}
+			NetworkBridge.Instance?.SendState(state);
 		}
 	}
 }

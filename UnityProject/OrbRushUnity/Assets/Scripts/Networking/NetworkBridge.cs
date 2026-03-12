@@ -29,10 +29,10 @@ namespace OrbRush.Networking
 			GameObject udpObj = GameObject.Find("UdpNetworkManager");
 			GameObject signalRObj = GameObject.Find("SignalRNetworkManager");
 
-			if (udpObj != null)
+			if (udpObj)
 				udpObj.SetActive(mode == NetworkMode.UDP);
 
-			if (signalRObj != null)
+			if (signalRObj)
 				signalRObj.SetActive(mode == NetworkMode.SignalR);
 		}
 
