@@ -3,38 +3,38 @@ using OrbRush.Networking;
 
 namespace OrbRush.GameLogic
 {
-	// Author: Haider
-	// Responsibility: Detect orb collection by the local player
-	public class OrbCollector : MonoBehaviour
-	{
-		private void OnTriggerEnter(Collider other)
-		{
-			PlayerController controller = GetComponent<PlayerController>();
+    // Author: Haider
+    // Responsibility: Detect orb collection by the local player
+    public class OrbCollector : MonoBehaviour
+    {
+        private void OnTriggerEnter(Collider other)
+        {
+            PlayerController controller = GetComponent<PlayerController>();
 
-			if (!controller || !controller.isLocalPlayer)
-				return;
+            if (!controller || !controller.isLocalPlayer)
+                return;
 
-			if (!other.CompareTag("Orb"))
-				return;
+            if (!other.CompareTag("Orb"))
+                return;
 
-			if (!OrbSpawner.Instance || !OrbSpawner.Instance.ConsumeCurrentOrb())
-				return;
+            if (!OrbSpawner.Instance || !OrbSpawner.Instance.ConsumeCurrentOrb())
+                return;
 
-			Vector3 newOrbPosition = GameManager.Instance.GetRandomSpawnPosition();
-			OrbSpawner.Instance.ApplyRemoteOrbSpawn(newOrbPosition);
-			ScoreManager.Instance?.ApplyOrbCollected(controller.playerId);
+            Vector3 newOrbPosition = GameManager.Instance.GetRandomSpawnPosition();
+            OrbSpawner.Instance.ApplyRemoteOrbSpawn(newOrbPosition);
+            ScoreManager.Instance?.ApplyOrbCollected(controller.playerId);
 
-			PlayerState state = new PlayerState
-			{
-				messageType = "ORB_COLLECT",
-				playerId = controller.playerId,
-				x = newOrbPosition.x,
-				y = newOrbPosition.y,
-				z = newOrbPosition.z,
-				sequence = System.DateTime.UtcNow.Ticks
-			};
+            PlayerState state = new PlayerState
+            {
+                messageType = "ORB_COLLECT",
+                playerId = controller.playerId,
+                x = newOrbPosition.x,
+                y = newOrbPosition.y,
+                z = newOrbPosition.z,
+                sequence = System.DateTime.UtcNow.Ticks
+            };
 
-			NetworkBridge.Instance?.SendState(state);
-		}
-	}
+            NetworkBridge.Instance?.SendState(state);
+        }
+    }
 }
