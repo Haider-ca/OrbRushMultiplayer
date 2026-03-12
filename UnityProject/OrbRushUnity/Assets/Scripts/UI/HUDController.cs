@@ -49,7 +49,7 @@ namespace OrbRush.UI
 			EnsureStyles();
 
 			if ((scoreText == null || statusText == null) && !string.IsNullOrEmpty(fallbackScoreText))
-				GUI.Label(new Rect(24, 24, 520, 300), fallbackScoreText, scoreStyle);
+				GUI.Label(new Rect(12, 12, 320, 200), fallbackScoreText, scoreStyle);
 
 			if (ScoreManager.Instance != null && ScoreManager.Instance.IsRoundEnded())
 				DrawRoundEndModal();
@@ -59,11 +59,12 @@ namespace OrbRush.UI
 		{
 			if (scoreStyle == null)
 			{
-				scoreStyle = new GUIStyle(GUI.skin.box);
+				scoreStyle = new GUIStyle();
 				scoreStyle.alignment = TextAnchor.UpperLeft;
-				scoreStyle.fontSize = 30;
+				scoreStyle.fontSize = 16;
 				scoreStyle.normal.textColor = Color.white;
-				scoreStyle.padding = new RectOffset(18, 18, 18, 18);
+				scoreStyle.normal.background = null;
+				scoreStyle.padding = new RectOffset(10, 10, 10, 10);
 			}
 
 			if (statusStyle == null)
