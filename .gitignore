@@ -41,3 +41,4 @@ SignalRDllHelper/obj/
 SignalRDllHelper/publish/
 
 output/
+*.slnx
