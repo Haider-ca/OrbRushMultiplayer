@@ -15,6 +15,8 @@ namespace OrbRush.GameLogic
 		public int winScore = 5;
 
 		private readonly Dictionary<int, int> scores = new Dictionary<int, int>();
+		private bool isGameOver;
+		private int currentWinnerId;
 
 		private void Awake()
 		{
@@ -28,6 +30,9 @@ namespace OrbRush.GameLogic
 
 		public void AddScore(int playerId)
 		{
+			if (isGameOver)
+				return;
+
 			if (!scores.ContainsKey(playerId))
 				scores[playerId] = 0;
 
@@ -50,6 +55,9 @@ namespace OrbRush.GameLogic
 
 			if (scores[playerId] >= winScore)
 			{
+				isGameOver = true;
+				currentWinnerId = playerId;
+
 				if (HUDController.Instance != null)
 					HUDController.Instance.SetStatusText("Player " + playerId + " wins!");
 
@@ -73,10 +81,27 @@ namespace OrbRush.GameLogic
 			RefreshScoreUI();
 		}
 
+		public int GetScore(int playerId)
+		{
+			if (!scores.TryGetValue(playerId, out int score))
+				return 0;
+
+			return score;
+		}
+
 		public void ApplyGameOver(int winnerId)
 		{
+			isGameOver = true;
+			currentWinnerId = winnerId;
+
 			if (HUDController.Instance != null)
 				HUDController.Instance.SetStatusText("Player " + winnerId + " wins!");
+		}
+
+		public bool TryGetGameOverWinner(out int winnerId)
+		{
+			winnerId = currentWinnerId;
+			return isGameOver;
 		}
 
 		private void RefreshScoreUI()

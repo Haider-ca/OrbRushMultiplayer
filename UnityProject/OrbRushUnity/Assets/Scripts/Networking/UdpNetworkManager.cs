@@ -3,28 +3,42 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using UnityEngine;
 using OrbRush.GameLogic;
-using OrbRush.Utilities;
 using OrbRush.UI;
+using OrbRush.Utilities;
+using UnityEngine;
 
 namespace OrbRush.Networking
 {
 	// Author: Networking Team
-	// Responsibility: UDP multicast send/receive
+	// Responsibility: UDP multicast send/receive and basic loss recovery
 	public class UdpNetworkManager : MonoBehaviour
 	{
 		public static UdpNetworkManager Instance;
 
 		public string multicastAddress = "230.0.0.1";
 		public int port = 11000;
+		public float joinBroadcastIntervalSeconds = 2f;
+		public float scoreBroadcastIntervalSeconds = 2f;
+		public float orbBroadcastIntervalSeconds = 2f;
+		public float gameOverBroadcastIntervalSeconds = 1f;
+		public float remotePlayerTimeoutSeconds = 8f;
 
 		private UdpClient udpClient;
 		private IPEndPoint multicastEndPoint;
 		private Thread receiveThread;
-		private bool isRunning = false;
+		private bool isRunning;
+		private bool leaveSent;
+		private float nextJoinBroadcastTime;
+		private float nextScoreBroadcastTime;
+		private float nextOrbBroadcastTime;
+		private float nextGameOverBroadcastTime;
 
 		private readonly Dictionary<int, long> lastSequenceByPlayer = new Dictionary<int, long>();
+		private readonly Dictionary<int, long> lastScoreSequenceByPlayer = new Dictionary<int, long>();
+		private readonly Dictionary<int, float> lastSeenTimeByPlayer = new Dictionary<int, float>();
+		private long lastOrbSpawnSequence = -1;
+		private long lastGameOverSequence = -1;
 
 		private void Awake()
 		{
@@ -44,23 +58,74 @@ namespace OrbRush.Networking
 			udpClient = new UdpClient();
 			udpClient.ExclusiveAddressUse = false;
 
-			IPEndPoint localEp = new IPEndPoint(IPAddress.Any, port);
+			IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, port);
 			udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-			udpClient.Client.Bind(localEp);
+			udpClient.Client.Bind(localEndPoint);
 			udpClient.JoinMulticastGroup(IPAddress.Parse(multicastAddress));
 
 			multicastEndPoint = new IPEndPoint(IPAddress.Parse(multicastAddress), port);
 
 			isRunning = true;
-			receiveThread = new Thread(ReceiveLoop);
-			receiveThread.IsBackground = true;
+			receiveThread = new Thread(ReceiveLoop) { IsBackground = true };
 			receiveThread.Start();
 
 			SendJoin(localPlayerId, spawn);
+			nextJoinBroadcastTime = Time.time + joinBroadcastIntervalSeconds;
+			nextScoreBroadcastTime = Time.time + scoreBroadcastIntervalSeconds;
+			nextOrbBroadcastTime = Time.time + orbBroadcastIntervalSeconds;
+			nextGameOverBroadcastTime = Time.time + gameOverBroadcastIntervalSeconds;
+		}
+
+		private void Update()
+		{
+			if (!isRunning)
+			{
+				CleanupTimedOutRemotePlayers();
+				return;
+			}
+
+			if (joinBroadcastIntervalSeconds > 0f && Time.time >= nextJoinBroadcastTime)
+			{
+				SendJoin(GameManager.Instance.localPlayerId, GetLocalPlayerPosition());
+				nextJoinBroadcastTime = Time.time + joinBroadcastIntervalSeconds;
+			}
+
+			if (scoreBroadcastIntervalSeconds > 0f && Time.time >= nextScoreBroadcastTime)
+			{
+				BroadcastLocalScoreSnapshot();
+				nextScoreBroadcastTime = Time.time + scoreBroadcastIntervalSeconds;
+			}
+
+			if (orbBroadcastIntervalSeconds > 0f && Time.time >= nextOrbBroadcastTime)
+			{
+				BroadcastOrbSnapshot();
+				nextOrbBroadcastTime = Time.time + orbBroadcastIntervalSeconds;
+			}
+
+			if (gameOverBroadcastIntervalSeconds > 0f && Time.time >= nextGameOverBroadcastTime)
+			{
+				BroadcastGameOverSnapshot();
+				nextGameOverBroadcastTime = Time.time + gameOverBroadcastIntervalSeconds;
+			}
+
+			CleanupTimedOutRemotePlayers();
+		}
+
+		private void OnApplicationQuit()
+		{
+			ShutdownNetwork(true);
 		}
 
 		private void OnDestroy()
 		{
+			ShutdownNetwork(!leaveSent);
+		}
+
+		private void ShutdownNetwork(bool sendLeave)
+		{
+			if (sendLeave)
+				SendLeave();
+
 			isRunning = false;
 
 			try
@@ -99,10 +164,86 @@ namespace OrbRush.Networking
 				x = spawn.x,
 				y = spawn.y,
 				z = spawn.z,
-				sequence = 0
+				sequence = System.DateTime.UtcNow.Ticks
 			};
 
 			SendState(state);
+		}
+
+		private void SendLeave()
+		{
+			if (leaveSent || udpClient == null || GameManager.Instance == null || GameManager.Instance.localPlayerId == 0)
+				return;
+
+			PlayerState state = new PlayerState
+			{
+				messageType = "LEAVE",
+				playerId = GameManager.Instance.localPlayerId,
+				sequence = System.DateTime.UtcNow.Ticks
+			};
+
+			leaveSent = true;
+			SendState(state);
+		}
+
+		private void BroadcastLocalScoreSnapshot()
+		{
+			if (ScoreManager.Instance == null || GameManager.Instance == null)
+				return;
+
+			PlayerState state = new PlayerState
+			{
+				messageType = "SCORE",
+				playerId = GameManager.Instance.localPlayerId,
+				score = ScoreManager.Instance.GetScore(GameManager.Instance.localPlayerId),
+				sequence = System.DateTime.UtcNow.Ticks
+			};
+
+			SendState(state);
+		}
+
+		private void BroadcastOrbSnapshot()
+		{
+			if (OrbSpawner.Instance == null || !OrbSpawner.Instance.TryGetCurrentOrbPosition(out Vector3 orbPosition))
+				return;
+
+			PlayerState state = new PlayerState
+			{
+				messageType = "ORB_SPAWN",
+				x = orbPosition.x,
+				y = orbPosition.y,
+				z = orbPosition.z,
+				sequence = System.DateTime.UtcNow.Ticks
+			};
+
+			SendState(state);
+		}
+
+		private void BroadcastGameOverSnapshot()
+		{
+			if (ScoreManager.Instance == null || !ScoreManager.Instance.TryGetGameOverWinner(out int winnerId))
+				return;
+
+			PlayerState state = new PlayerState
+			{
+				messageType = "GAME_OVER",
+				winnerId = winnerId,
+				sequence = System.DateTime.UtcNow.Ticks
+			};
+
+			SendState(state);
+		}
+
+		private Vector3 GetLocalPlayerPosition()
+		{
+			PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+			foreach (PlayerController controller in players)
+			{
+				if (controller.isLocalPlayer)
+					return controller.transform.position;
+			}
+
+			return Vector3.zero;
 		}
 
 		private void ReceiveLoop()
@@ -111,8 +252,8 @@ namespace OrbRush.Networking
 			{
 				try
 				{
-					IPEndPoint remoteEP = null;
-					byte[] data = udpClient.Receive(ref remoteEP);
+					IPEndPoint remoteEndPoint = null;
+					byte[] data = udpClient.Receive(ref remoteEndPoint);
 					string json = Encoding.UTF8.GetString(data);
 					PlayerState state = JsonUtility.FromJson<PlayerState>(json);
 
@@ -126,22 +267,8 @@ namespace OrbRush.Networking
 						continue;
 					}
 
-					if (state.messageType == "MOVE" || state.messageType == "JOIN")
-					{
-						if (state.playerId != 0)
-						{
-							if (!lastSequenceByPlayer.ContainsKey(state.playerId))
-								lastSequenceByPlayer[state.playerId] = -1;
-
-							if (state.messageType == "MOVE" &&
-								state.sequence <= lastSequenceByPlayer[state.playerId])
-							{
-								continue;
-							}
-
-							lastSequenceByPlayer[state.playerId] = state.sequence;
-						}
-					}
+					if (ShouldIgnoreState(state))
+						continue;
 
 					MainThreadDispatcher.Enqueue(() => ApplyState(state));
 				}
@@ -151,8 +278,107 @@ namespace OrbRush.Networking
 			}
 		}
 
+		private bool ShouldIgnoreState(PlayerState state)
+		{
+			switch (state.messageType)
+			{
+				case "MOVE":
+				case "JOIN":
+				case "LEAVE":
+					return !TryTrackLatestSequence(lastSequenceByPlayer, state.playerId, state.sequence, true);
+
+				case "SCORE":
+					return !TryTrackLatestSequence(lastScoreSequenceByPlayer, state.playerId, state.sequence, true);
+
+				case "ORB_SPAWN":
+					if (state.sequence <= lastOrbSpawnSequence)
+						return true;
+
+					lastOrbSpawnSequence = state.sequence;
+					return false;
+
+				case "GAME_OVER":
+					if (state.sequence <= lastGameOverSequence)
+						return true;
+
+					lastGameOverSequence = state.sequence;
+					return false;
+
+				default:
+					return false;
+			}
+		}
+
+		private bool TryTrackLatestSequence(Dictionary<int, long> sequenceMap, int key, long sequence, bool rejectOlderOrDuplicate)
+		{
+			if (key == 0)
+				return true;
+
+			if (!sequenceMap.ContainsKey(key))
+			{
+				sequenceMap[key] = sequence;
+				return true;
+			}
+
+			if (rejectOlderOrDuplicate && sequence <= sequenceMap[key])
+				return false;
+
+			sequenceMap[key] = sequence;
+			return true;
+		}
+
+		private void CleanupTimedOutRemotePlayers()
+		{
+			if (remotePlayerTimeoutSeconds <= 0f || GameManager.Instance == null)
+				return;
+
+			List<int> timedOutPlayers = null;
+			foreach (KeyValuePair<int, float> entry in lastSeenTimeByPlayer)
+			{
+				if (Time.time - entry.Value <= remotePlayerTimeoutSeconds)
+					continue;
+
+				timedOutPlayers ??= new List<int>();
+				timedOutPlayers.Add(entry.Key);
+			}
+
+			if (timedOutPlayers == null)
+				return;
+
+			foreach (int playerId in timedOutPlayers)
+				RemoveRemotePlayerState(playerId);
+		}
+
+		private void RemoveRemotePlayerState(int playerId)
+		{
+			if (GameManager.Instance == null)
+				return;
+
+			lastSeenTimeByPlayer.Remove(playerId);
+			lastSequenceByPlayer.Remove(playerId);
+			lastScoreSequenceByPlayer.Remove(playerId);
+			GameManager.Instance.RemoveRemotePlayer(playerId);
+		}
+
+		private void TrackRemotePlayerHeartbeat(PlayerState state)
+		{
+			if (state.playerId == 0 || state.playerId == GameManager.Instance.localPlayerId)
+				return;
+
+			switch (state.messageType)
+			{
+				case "JOIN":
+				case "MOVE":
+				case "SCORE":
+					lastSeenTimeByPlayer[state.playerId] = Time.time;
+					break;
+			}
+		}
+
 		private void ApplyState(PlayerState state)
 		{
+			TrackRemotePlayerHeartbeat(state);
+
 			switch (state.messageType)
 			{
 				case "JOIN":
@@ -178,6 +404,10 @@ namespace OrbRush.Networking
 
 				case "GAME_OVER":
 					ScoreManager.Instance.ApplyGameOver(state.winnerId);
+					break;
+
+				case "LEAVE":
+					RemoveRemotePlayerState(state.playerId);
 					break;
 			}
 		}
