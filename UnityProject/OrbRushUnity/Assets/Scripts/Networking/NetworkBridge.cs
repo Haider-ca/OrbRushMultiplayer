@@ -2,48 +2,48 @@ using UnityEngine;
 
 namespace OrbRush.Networking
 {
-	// Author: Jerry
-	// Responsibility: Unified send interface that routes to either UDP or SignalR
-	public class NetworkBridge : MonoBehaviour
-	{
-		public static NetworkBridge Instance;
+    // Author: Jerry
+    // Responsibility: Unified send interface that routes to either UDP or SignalR
+    public class NetworkBridge : MonoBehaviour
+    {
+        public static NetworkBridge Instance;
 
-		public enum NetworkMode
-		{
-			UDP,
-			SignalR
-		}
+        public enum NetworkMode
+        {
+            UDP,
+            SignalR
+        }
 
-		public NetworkMode mode = NetworkMode.UDP;
+        public NetworkMode mode = NetworkMode.UDP;
 
-		private INetworkSender activeSender;
+        private INetworkSender _activeSender;
 
-		private void Awake()
-		{
-			Instance = this;
-		}
+        private void Awake()
+        {
+            Instance = this;
+        }
 
-		private void Start()
-		{
-			// Disable the network manager that is NOT selected
-			GameObject udpObj = GameObject.Find("UdpNetworkManager");
-			GameObject signalRObj = GameObject.Find("SignalRNetworkManager");
+        private void Start()
+        {
+            // Disable the network manager that is NOT selected
+            GameObject udpObj = GameObject.Find("UdpNetworkManager");
+            GameObject signalRObj = GameObject.Find("SignalRNetworkManager");
 
-			if (udpObj != null)
-				udpObj.SetActive(mode == NetworkMode.UDP);
+            if (udpObj)
+                udpObj.SetActive(mode == NetworkMode.UDP);
 
-			if (signalRObj != null)
-				signalRObj.SetActive(mode == NetworkMode.SignalR);
-		}
+            if (signalRObj)
+                signalRObj.SetActive(mode == NetworkMode.SignalR);
+        }
 
-		public void RegisterSender(INetworkSender sender)
-		{
-			activeSender = sender;
-		}
+        public void RegisterSender(INetworkSender sender)
+        {
+            _activeSender = sender;
+        }
 
-		public void SendState(PlayerState state)
-		{
-			activeSender?.SendState(state);
-		}
-	}
+        public void SendState(PlayerState state)
+        {
+            _activeSender?.SendState(state);
+        }
+    }
 }

@@ -49,7 +49,7 @@ namespace OrbRush.Networking
 
 		private void Start()
 		{
-			if (NetworkBridge.Instance != null)
+			if (NetworkBridge.Instance)
 				NetworkBridge.Instance.RegisterSender(this);
 
 			int localPlayerId = Random.Range(1000, 9999);
@@ -57,7 +57,7 @@ namespace OrbRush.Networking
 
 			GameManager.Instance.SpawnLocalPlayer(localPlayerId, spawn);
 
-			if (HUDController.Instance != null)
+			if (HUDController.Instance)
 				HUDController.Instance.SetStatusText("Local Player ID: " + localPlayerId);
 
 			udpClient = new UdpClient();
@@ -177,7 +177,7 @@ namespace OrbRush.Networking
 
 		private void SendLeave()
 		{
-			if (leaveSent || udpClient == null || GameManager.Instance == null || GameManager.Instance.localPlayerId == 0)
+			if (leaveSent || udpClient == null || !GameManager.Instance || GameManager.Instance.localPlayerId == 0)
 				return;
 
 			PlayerState state = new PlayerState
@@ -193,7 +193,7 @@ namespace OrbRush.Networking
 
 		private void BroadcastLocalScoreSnapshot()
 		{
-			if (ScoreManager.Instance == null || GameManager.Instance == null)
+			if (!ScoreManager.Instance || !GameManager.Instance)
 				return;
 
 			PlayerState state = new PlayerState
@@ -209,7 +209,7 @@ namespace OrbRush.Networking
 
 		private void BroadcastOrbSnapshot()
 		{
-			if (OrbSpawner.Instance == null || !OrbSpawner.Instance.TryGetCurrentOrbPosition(out Vector3 orbPosition))
+			if (!OrbSpawner.Instance || !OrbSpawner.Instance.TryGetCurrentOrbPosition(out Vector3 orbPosition))
 				return;
 
 			PlayerState state = new PlayerState
@@ -226,7 +226,7 @@ namespace OrbRush.Networking
 
 		private void BroadcastGameOverSnapshot()
 		{
-			if (ScoreManager.Instance == null || !ScoreManager.Instance.TryGetGameOverWinner(out int winnerId))
+			if (!ScoreManager.Instance || !ScoreManager.Instance.TryGetGameOverWinner(out int winnerId))
 				return;
 
 			PlayerState state = new PlayerState
@@ -344,7 +344,7 @@ namespace OrbRush.Networking
 
 		private void CleanupTimedOutRemotePlayers()
 		{
-			if (remotePlayerTimeoutSeconds <= 0f || GameManager.Instance == null)
+			if (remotePlayerTimeoutSeconds <= 0f || !GameManager.Instance)
 				return;
 
 			List<int> timedOutPlayers = null;
@@ -366,7 +366,7 @@ namespace OrbRush.Networking
 
 		private void RemoveRemotePlayerState(int playerId)
 		{
-			if (GameManager.Instance == null)
+			if (!GameManager.Instance)
 				return;
 
 			lastSeenTimeByPlayer.Remove(playerId);

@@ -1,3 +1,5 @@
+// Author: Jerry
+// Responsibility: ASP.NET Core entry point – configures SignalR hub and CORS
 using OrbRushServer.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);

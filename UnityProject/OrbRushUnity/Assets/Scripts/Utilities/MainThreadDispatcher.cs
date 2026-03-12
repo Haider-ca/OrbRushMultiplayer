@@ -4,29 +4,29 @@ using UnityEngine;
 
 namespace OrbRush.Utilities
 {
-	// Author: Team
-	// Responsibility: Run network updates on Unity main thread
-	public class MainThreadDispatcher : MonoBehaviour
-	{
-		private static readonly Queue<Action> actions = new Queue<Action>();
+    // Author: Team
+    // Responsibility: Run network updates on Unity main thread
+    public class MainThreadDispatcher : MonoBehaviour
+    {
+        private static readonly Queue<Action> Actions = new();
 
-		public static void Enqueue(Action action)
-		{
-			lock (actions)
-			{
-				actions.Enqueue(action);
-			}
-		}
+        public static void Enqueue(Action action)
+        {
+            lock (Actions)
+            {
+                Actions.Enqueue(action);
+            }
+        }
 
-		private void Update()
-		{
-			lock (actions)
-			{
-				while (actions.Count > 0)
-				{
-					actions.Dequeue()?.Invoke();
-				}
-			}
-		}
-	}
+        private void Update()
+        {
+            lock (Actions)
+            {
+                while (Actions.Count > 0)
+                {
+                    Actions.Dequeue()?.Invoke();
+                }
+            }
+        }
+    }
 }

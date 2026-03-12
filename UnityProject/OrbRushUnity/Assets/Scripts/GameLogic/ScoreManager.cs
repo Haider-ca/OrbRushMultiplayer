@@ -6,243 +6,235 @@ using OrbRush.UI;
 
 namespace OrbRush.GameLogic
 {
-	// Author: Haider, Jerry(Edit)
-	// Responsibility: Track scores, round timer, and game-over state
-	public class ScoreManager : MonoBehaviour
-	{
-		public static ScoreManager Instance;
+    // Author: Haider, Jerry(Edit)
+    // Responsibility: Track scores, round timer, and game-over state
+    public class ScoreManager : MonoBehaviour
+    {
+        public static ScoreManager Instance;
 
-		public float roundDurationSeconds = 60f;
+        public float roundDurationSeconds = 60f;
 
-		private readonly Dictionary<int, int> scores = new Dictionary<int, int>();
-		private float remainingTime;
-		private bool roundEnded;
-		private int currentWinnerId;
+        private readonly Dictionary<int, int> _scores = new();
+        private float _remainingTime;
+        private bool _roundEnded;
+        private int _currentWinnerId;
 
-		private void Awake()
-		{
-			Instance = this;
-			roundDurationSeconds = 60f;
-			remainingTime = roundDurationSeconds;
-		}
+        private void Awake()
+        {
+            Instance = this;
+            roundDurationSeconds = 60f;
+            _remainingTime = roundDurationSeconds;
+        }
 
-		private void Start()
-		{
-			RefreshScoreUI();
-		}
+        private void Start()
+        {
+            RefreshScoreUI();
+        }
 
-		private void Update()
-		{
-			if (roundEnded)
-				return;
+        private void Update()
+        {
+            if (_roundEnded)
+                return;
 
-			remainingTime -= Time.deltaTime;
-			if (remainingTime <= 0f)
-			{
-				remainingTime = 0f;
-				EndRound();
-			}
+            _remainingTime -= Time.deltaTime;
+            if (_remainingTime <= 0f)
+            {
+                _remainingTime = 0f;
+                EndRound();
+            }
 
-			RefreshScoreUI();
-		}
+            RefreshScoreUI();
+        }
 
-		public void RegisterPlayer(int playerId)
-		{
-			if (!scores.ContainsKey(playerId))
-				scores[playerId] = 0;
+        public void RegisterPlayer(int playerId)
+        {
+            _scores.TryAdd(playerId, 0);
 
-			RefreshScoreUI();
-		}
+            RefreshScoreUI();
+        }
 
-		public void RemovePlayer(int playerId)
-		{
-			if (!scores.ContainsKey(playerId))
-				return;
+        public void RemovePlayer(int playerId)
+        {
+            if (!_scores.Remove(playerId))
+                return;
+            RefreshScoreUI();
+        }
 
-			scores.Remove(playerId);
-			RefreshScoreUI();
-		}
+        public void AddScore(int playerId)
+        {
+            if (_roundEnded)
+                return;
 
-		public void AddScore(int playerId)
-		{
-			if (roundEnded)
-				return;
+            _scores.TryAdd(playerId, 0);
 
-			if (!scores.ContainsKey(playerId))
-				scores[playerId] = 0;
+            _scores[playerId]++;
+            RefreshScoreUI();
 
-			scores[playerId]++;
-			RefreshScoreUI();
+            if (!NetworkBridge.Instance)
+                return;
 
-			if (NetworkBridge.Instance != null)
-			{
-				PlayerState state = new PlayerState
-				{
-					messageType = "SCORE",
-					playerId = playerId,
-					score = scores[playerId],
-					sequence = System.DateTime.UtcNow.Ticks
-				};
+            PlayerState state = new PlayerState
+            {
+                messageType = "SCORE",
+                playerId = playerId,
+                score = _scores[playerId],
+                sequence = System.DateTime.UtcNow.Ticks
+            };
 
-				NetworkBridge.Instance.SendState(state);
-			}
-		}
+            NetworkBridge.Instance.SendState(state);
+        }
 
-		public void ApplyOrbCollected(int playerId)
-		{
-			if (roundEnded)
-				return;
+        public void ApplyOrbCollected(int playerId)
+        {
+            if (_roundEnded)
+                return;
 
-			if (!scores.ContainsKey(playerId))
-				scores[playerId] = 0;
+            _scores.TryAdd(playerId, 0);
 
-			scores[playerId]++;
-			RefreshScoreUI();
-		}
+            _scores[playerId]++;
+            RefreshScoreUI();
+        }
 
-		public void SetRemoteScore(int playerId, int score)
-		{
-			scores[playerId] = score;
-			RefreshScoreUI();
-		}
+        public void SetRemoteScore(int playerId, int score)
+        {
+            _scores[playerId] = score;
+            RefreshScoreUI();
+        }
 
-		public int GetScore(int playerId)
-		{
-			if (!scores.TryGetValue(playerId, out int score))
-				return 0;
+        public int GetScore(int playerId)
+        {
+            return _scores.GetValueOrDefault(playerId);
+        }
 
-			return score;
-		}
+        public void ApplyGameOver(int winnerId)
+        {
+            _roundEnded = true;
+            _remainingTime = 0f;
+            _currentWinnerId = winnerId;
+            RefreshScoreUI();
+        }
 
-		public void ApplyGameOver(int winnerId)
-		{
-			roundEnded = true;
-			remainingTime = 0f;
-			currentWinnerId = winnerId;
-			RefreshScoreUI();
-		}
+        public bool TryGetGameOverWinner(out int winnerId)
+        {
+            winnerId = _currentWinnerId;
+            return _roundEnded;
+        }
 
-		public bool TryGetGameOverWinner(out int winnerId)
-		{
-			winnerId = currentWinnerId;
-			return roundEnded;
-		}
+        public bool IsRoundEnded()
+        {
+            return _roundEnded;
+        }
 
-		public bool IsRoundEnded()
-		{
-			return roundEnded;
-		}
+        public string GetWinnerSummary()
+        {
+            return GetWinnerText();
+        }
 
-		public string GetWinnerSummary()
-		{
-			return GetWinnerText();
-		}
+        public string GetScoreboardSummary()
+        {
+            StringBuilder sb = new StringBuilder();
 
-		public string GetScoreboardSummary()
-		{
-			StringBuilder sb = new StringBuilder();
+            foreach (KeyValuePair<int, int> entry in _scores)
+                sb.AppendLine("Player " + entry.Key + ": " + entry.Value);
 
-			foreach (KeyValuePair<int, int> entry in scores)
-				sb.AppendLine("Player " + entry.Key + ": " + entry.Value);
+            return sb.ToString().TrimEnd();
+        }
 
-			return sb.ToString().TrimEnd();
-		}
+        public void RestartRound()
+        {
+            List<int> playerIds = new List<int>(_scores.Keys);
 
-		public void RestartRound()
-		{
-			List<int> playerIds = new List<int>(scores.Keys);
+            _scores.Clear();
+            foreach (int playerId in playerIds)
+                _scores[playerId] = 0;
 
-			scores.Clear();
-			foreach (int playerId in playerIds)
-				scores[playerId] = 0;
+            _remainingTime = roundDurationSeconds;
+            _roundEnded = false;
+            _currentWinnerId = 0;
 
-			remainingTime = roundDurationSeconds;
-			roundEnded = false;
-			currentWinnerId = 0;
+            OrbSpawner.Instance?.ApplyRemoteOrbSpawn(GameManager.Instance.GetRandomSpawnPosition());
 
-			OrbSpawner.Instance?.ApplyRemoteOrbSpawn(GameManager.Instance.GetRandomSpawnPosition());
+            RefreshScoreUI();
+        }
 
-			RefreshScoreUI();
-		}
+        private void RefreshScoreUI()
+        {
+            if (!HUDController.Instance)
+                return;
 
-		private void RefreshScoreUI()
-		{
-			if (HUDController.Instance == null)
-				return;
+            StringBuilder sb = new StringBuilder();
+            int localPlayerId = GameManager.Instance ? GameManager.Instance.localPlayerId : 0;
+            int localScore = _scores.GetValueOrDefault(localPlayerId);
 
-			StringBuilder sb = new StringBuilder();
-			int localPlayerId = GameManager.Instance != null ? GameManager.Instance.localPlayerId : 0;
-			int localScore = scores.ContainsKey(localPlayerId) ? scores[localPlayerId] : 0;
+            sb.AppendLine("Time Left: " + FormatTime(_remainingTime));
+            sb.AppendLine("My Score: " + localScore);
+            sb.AppendLine("Scores");
 
-			sb.AppendLine("Time Left: " + FormatTime(remainingTime));
-			sb.AppendLine("My Score: " + localScore);
-			sb.AppendLine("Scores");
+            foreach (KeyValuePair<int, int> entry in _scores)
+                sb.AppendLine("Player " + entry.Key + ": " + entry.Value);
 
-			foreach (KeyValuePair<int, int> entry in scores)
-				sb.AppendLine("Player " + entry.Key + ": " + entry.Value);
+            if (_roundEnded)
+                sb.AppendLine(GetWinnerText());
 
-			if (roundEnded)
-				sb.AppendLine(GetWinnerText());
+            HUDController.Instance.SetScoreText(sb.ToString());
+            HUDController.Instance.SetStatusText(string.Empty);
+        }
 
-			HUDController.Instance.SetScoreText(sb.ToString());
-			HUDController.Instance.SetStatusText(string.Empty);
-		}
+        private void EndRound()
+        {
+            if (_roundEnded)
+                return;
 
-		private void EndRound()
-		{
-			if (roundEnded)
-				return;
+            _roundEnded = true;
+            _currentWinnerId = GetWinnerId();
 
-			roundEnded = true;
-			currentWinnerId = GetWinnerId();
+            if (_currentWinnerId != 0 && NetworkBridge.Instance)
+            {
+                PlayerState state = new PlayerState
+                {
+                    messageType = "GAME_OVER",
+                    winnerId = _currentWinnerId,
+                    sequence = System.DateTime.UtcNow.Ticks
+                };
 
-			if (currentWinnerId != 0 && NetworkBridge.Instance != null)
-			{
-				PlayerState state = new PlayerState
-				{
-					messageType = "GAME_OVER",
-					winnerId = currentWinnerId,
-					sequence = System.DateTime.UtcNow.Ticks
-				};
+                NetworkBridge.Instance.SendState(state);
+            }
 
-				NetworkBridge.Instance.SendState(state);
-			}
+            RefreshScoreUI();
+        }
 
-			RefreshScoreUI();
-		}
+        private int GetWinnerId()
+        {
+            int winnerId = 0;
+            int bestScore = int.MinValue;
 
-		private int GetWinnerId()
-		{
-			int winnerId = 0;
-			int bestScore = int.MinValue;
+            foreach (KeyValuePair<int, int> entry in _scores)
+            {
+                if (entry.Value > bestScore)
+                {
+                    bestScore = entry.Value;
+                    winnerId = entry.Key;
+                }
+            }
 
-			foreach (KeyValuePair<int, int> entry in scores)
-			{
-				if (entry.Value > bestScore)
-				{
-					bestScore = entry.Value;
-					winnerId = entry.Key;
-				}
-			}
+            return winnerId;
+        }
 
-			return winnerId;
-		}
+        private string GetWinnerText()
+        {
+            if (_scores.Count == 0 || _currentWinnerId == 0)
+                return "Winner: None";
 
-		private string GetWinnerText()
-		{
-			if (scores.Count == 0 || currentWinnerId == 0)
-				return "Winner: None";
+            int winnerScore = _scores.GetValueOrDefault(_currentWinnerId);
+            return "Winner: Player " + _currentWinnerId + " (" + winnerScore + ")";
+        }
 
-			int winnerScore = scores.ContainsKey(currentWinnerId) ? scores[currentWinnerId] : 0;
-			return "Winner: Player " + currentWinnerId + " (" + winnerScore + ")";
-		}
-
-		private static string FormatTime(float timeSeconds)
-		{
-			int totalSeconds = Mathf.CeilToInt(Mathf.Max(0f, timeSeconds));
-			int minutes = totalSeconds / 60;
-			int seconds = totalSeconds % 60;
-			return minutes.ToString("00") + ":" + seconds.ToString("00");
-		}
-	}
+        private static string FormatTime(float timeSeconds)
+        {
+            int totalSeconds = Mathf.CeilToInt(Mathf.Max(0f, timeSeconds));
+            int minutes = totalSeconds / 60;
+            int seconds = totalSeconds % 60;
+            return minutes.ToString("00") + ":" + seconds.ToString("00");
+        }
+    }
 }
