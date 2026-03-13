@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace OrbRush.Networking
 {
-	// Author: Networking Team, Jerry(Edit)
+	// Author: Haven, Jerry(Edit)
 	// Responsibility: UDP multicast send/receive and basic loss recovery
 	public class UdpNetworkManager : MonoBehaviour, INetworkSender
 	{

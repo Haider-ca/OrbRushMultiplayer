@@ -6,7 +6,7 @@ using OrbRush.UI;
 
 namespace OrbRush.GameLogic
 {
-    // Author: Haider, Jerry(Edit)
+    // Author: Haider, Jerry(Edit), Haven(Edit)
     // Responsibility: Track scores, round timer, and game-over state
     public class ScoreManager : MonoBehaviour
     {
