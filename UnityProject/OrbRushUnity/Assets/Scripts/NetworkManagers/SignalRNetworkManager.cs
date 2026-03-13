@@ -34,7 +34,7 @@ namespace OrbRush.Networking
 			localPlayerId = UnityEngine.Random.Range(1000, 9999);
 			localSpawnPosition = new Vector3(
 				UnityEngine.Random.Range(-6f, 6f),
-				5f,
+				0f,
 				UnityEngine.Random.Range(-6f, 6f));
 
 			GameManager.Instance.SpawnLocalPlayer(localPlayerId, localSpawnPosition);
