@@ -22,6 +22,10 @@ namespace OrbRush.UI
         private GUIStyle _modalStyle;
         private GUIStyle _modalTitleStyle;
         private GUIStyle _modalBodyStyle;
+        private GUIStyle _statusPanelStyle;
+        private GUIStyle _announcementStyle;
+        private string _announcementText = string.Empty;
+        private float _announcementUntil;
 
         private void Awake()
         {
@@ -44,12 +48,27 @@ namespace OrbRush.UI
                 statusText.text = text;
         }
 
+        public void ShowAnnouncement(string text, float durationSeconds)
+        {
+            _announcementText = text ?? string.Empty;
+            _announcementUntil = Time.time + Mathf.Max(0.1f, durationSeconds);
+        }
+
         private void OnGUI()
         {
             EnsureStyles();
 
             if ((!scoreText || !statusText) && !string.IsNullOrEmpty(_fallbackScoreText))
-                GUI.Label(new Rect(12, 12, 320, 200), _fallbackScoreText, _scoreStyle);
+            {
+                GUI.Box(new Rect(18, 18, 300, 134), GUIContent.none, _statusPanelStyle);
+                GUI.Label(new Rect(30, 28, 272, 120), _fallbackScoreText, _scoreStyle);
+            }
+
+            if ((!scoreText || !statusText) && !string.IsNullOrEmpty(_fallbackStatusText))
+                GUI.Label(new Rect(24, Screen.height - 76, 460, 48), _fallbackStatusText, _statusStyle);
+
+            if (Time.time < _announcementUntil && !string.IsNullOrEmpty(_announcementText))
+                GUI.Label(new Rect(Screen.width * 0.5f - 220f, 96f, 440f, 48f), _announcementText, _announcementStyle);
 
             if (ScoreManager.Instance && ScoreManager.Instance.IsRoundEnded())
                 DrawRoundEndModal();
@@ -61,41 +80,69 @@ namespace OrbRush.UI
             {
                 _scoreStyle = new GUIStyle();
                 _scoreStyle.alignment = TextAnchor.UpperLeft;
-                _scoreStyle.fontSize = 16;
-                _scoreStyle.normal.textColor = Color.white;
+                _scoreStyle.fontSize = 18;
+                _scoreStyle.normal.textColor = new Color(0.98f, 1f, 0.94f);
                 _scoreStyle.normal.background = null;
-                _scoreStyle.padding = new RectOffset(10, 10, 10, 10);
+                _scoreStyle.padding = new RectOffset(8, 8, 8, 8);
             }
 
             if (_statusStyle == null)
             {
-                _statusStyle = new GUIStyle(GUI.skin.box);
+                _statusStyle = new GUIStyle(GUI.skin.label);
                 _statusStyle.alignment = TextAnchor.MiddleLeft;
-                _statusStyle.fontSize = 24;
-                _statusStyle.normal.textColor = Color.white;
-                _statusStyle.padding = new RectOffset(18, 18, 12, 12);
+                _statusStyle.fontSize = 22;
+                _statusStyle.fontStyle = FontStyle.Bold;
+                _statusStyle.normal.textColor = new Color(1f, 0.92f, 0.56f);
+                _statusStyle.padding = new RectOffset(14, 14, 10, 10);
             }
 
             if (_buttonStyle == null)
             {
                 _buttonStyle = new GUIStyle(GUI.skin.button);
                 _buttonStyle.fontSize = 24;
+                _buttonStyle.fontStyle = FontStyle.Bold;
+            }
+
+            if (_announcementStyle == null)
+            {
+                _announcementStyle = new GUIStyle(GUI.skin.box);
+                _announcementStyle.alignment = TextAnchor.MiddleCenter;
+                _announcementStyle.fontSize = 22;
+                _announcementStyle.fontStyle = FontStyle.Bold;
+                _announcementStyle.normal.textColor = new Color(0.96f, 1f, 0.94f);
+
+                Texture2D announcementTexture = new Texture2D(1, 1);
+                announcementTexture.SetPixel(0, 0, new Color(0.16f, 0.34f, 0.24f, 0.9f));
+                announcementTexture.Apply();
+                _announcementStyle.normal.background = announcementTexture;
+                _announcementStyle.padding = new RectOffset(18, 18, 10, 10);
             }
 
             if (_overlayStyle == null)
             {
                 Texture2D overlayTexture = new Texture2D(1, 1);
-                overlayTexture.SetPixel(0, 0, new Color(0f, 0f, 0f, 0.65f));
+                overlayTexture.SetPixel(0, 0, new Color(0.04f, 0.08f, 0.05f, 0.48f));
                 overlayTexture.Apply();
 
                 _overlayStyle = new GUIStyle();
                 _overlayStyle.normal.background = overlayTexture;
             }
 
+            if (_statusPanelStyle == null)
+            {
+                Texture2D statusPanelTexture = new Texture2D(1, 1);
+                statusPanelTexture.SetPixel(0, 0, new Color(0.2f, 0.34f, 0.24f, 0.78f));
+                statusPanelTexture.Apply();
+
+                _statusPanelStyle = new GUIStyle(GUI.skin.box);
+                _statusPanelStyle.normal.background = statusPanelTexture;
+                _statusPanelStyle.border = new RectOffset(8, 8, 8, 8);
+            }
+
             if (_modalStyle == null)
             {
                 Texture2D modalTexture = new Texture2D(1, 1);
-                modalTexture.SetPixel(0, 0, new Color(0.12f, 0.09f, 0.05f, 0.96f));
+                modalTexture.SetPixel(0, 0, new Color(0.22f, 0.32f, 0.24f, 0.95f));
                 modalTexture.Apply();
 
                 _modalStyle = new GUIStyle(GUI.skin.box);
@@ -109,7 +156,7 @@ namespace OrbRush.UI
                 _modalTitleStyle.fontSize = 34;
                 _modalTitleStyle.fontStyle = FontStyle.Bold;
                 _modalTitleStyle.alignment = TextAnchor.MiddleCenter;
-                _modalTitleStyle.normal.textColor = Color.white;
+                _modalTitleStyle.normal.textColor = new Color(1f, 0.97f, 0.8f);
             }
 
             if (_modalBodyStyle == null)
@@ -117,7 +164,7 @@ namespace OrbRush.UI
                 _modalBodyStyle = new GUIStyle(GUI.skin.label);
                 _modalBodyStyle.fontSize = 24;
                 _modalBodyStyle.alignment = TextAnchor.UpperLeft;
-                _modalBodyStyle.normal.textColor = Color.white;
+                _modalBodyStyle.normal.textColor = new Color(0.96f, 1f, 0.95f);
                 _modalBodyStyle.wordWrap = true;
             }
         }

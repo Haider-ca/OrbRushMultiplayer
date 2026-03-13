@@ -29,6 +29,7 @@ namespace OrbRush.GameLogic
                 Destroy(_currentOrb);
 
             _currentOrb = Instantiate(orbPrefab, position, Quaternion.identity);
+            ForestThemeStyler.StyleOrb(_currentOrb);
         }
 
         public bool ConsumeCurrentOrb()

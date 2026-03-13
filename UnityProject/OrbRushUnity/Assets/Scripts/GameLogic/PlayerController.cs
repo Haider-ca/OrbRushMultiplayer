@@ -14,6 +14,7 @@ namespace OrbRush.GameLogic
         public float playfieldMaxX = 9.5f;
         public float playfieldMinZ = -9.5f;
         public float playfieldMaxZ = 9.5f;
+        public float turnSpeed = 10f;
 
         private long _sequenceNumber;
         private Vector3 _lastSentPosition;
@@ -36,6 +37,7 @@ namespace OrbRush.GameLogic
 
             Vector3 move = new Vector3(h, 0f, v);
             transform.Translate(move * (moveSpeed * Time.deltaTime), Space.World);
+            UpdateFacing(move);
             WrapPosition();
 
             if (Vector3.Distance(transform.position, _lastSentPosition) > 0.02f)
@@ -78,6 +80,15 @@ namespace OrbRush.GameLogic
                 position.z = playfieldMinZ;
 
             transform.position = position;
+        }
+
+        private void UpdateFacing(Vector3 move)
+        {
+            if (move.sqrMagnitude < 0.0001f)
+                return;
+
+            Quaternion targetRotation = Quaternion.LookRotation(move.normalized, Vector3.up);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, turnSpeed * Time.deltaTime);
         }
     }
 }
