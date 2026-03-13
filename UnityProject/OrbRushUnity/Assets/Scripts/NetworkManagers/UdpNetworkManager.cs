@@ -49,7 +49,7 @@ namespace OrbRush.Networking
 				NetworkBridge.Instance.RegisterSender(this);
 
 			int localPlayerId = Random.Range(1000, 9999);
-			Vector3 spawn = new Vector3(Random.Range(-6f, 6f), 5f, Random.Range(-6f, 6f));
+			Vector3 spawn = new Vector3(Random.Range(-6f, 6f), 0f, Random.Range(-6f, 6f));
 
 			GameManager.Instance.SpawnLocalPlayer(localPlayerId, spawn);
 

@@ -77,7 +77,7 @@ namespace OrbRush.GameLogic
 
         public Vector3 GetRandomSpawnPosition()
         {
-            return new Vector3(Random.Range(-6f, 6f), 5f, Random.Range(-6f, 6f));
+            return new Vector3(Random.Range(-6f, 6f), 0f, Random.Range(-6f, 6f));
         }
     }
 }
