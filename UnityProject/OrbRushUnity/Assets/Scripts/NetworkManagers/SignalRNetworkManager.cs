@@ -87,6 +87,9 @@ namespace OrbRush.Networking
 			connection.On<int, float, float, float>("ReceiveJoin",
 				(playerId, x, y, z) =>
 				{
+					if (playerId == localPlayerId)
+						return;
+
 					Debug.Log("[SignalR] ReceiveJoin playerId=" + playerId + " position=(" + x + ", " + y + ", " + z + ")");
 					MainThreadDispatcher.Enqueue(() =>
 					{
@@ -108,6 +111,9 @@ namespace OrbRush.Networking
 			connection.On<int, float, float, float, long>("ReceiveMove",
 				(playerId, x, y, z, sequence) =>
 				{
+					if (playerId == localPlayerId)
+						return;
+
 					Debug.Log("[SignalR] ReceiveMove playerId=" + playerId + " sequence=" + sequence);
 					MainThreadDispatcher.Enqueue(() =>
 					{

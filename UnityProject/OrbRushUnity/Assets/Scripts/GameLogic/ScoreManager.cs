@@ -68,20 +68,7 @@ namespace OrbRush.GameLogic
             _scores.TryAdd(playerId, 0);
 
             _scores[playerId]++;
-            RefreshScoreUI();
-
-            if (!NetworkBridge.Instance)
-                return;
-
-            PlayerState state = new PlayerState
-            {
-                messageType = "SCORE",
-                playerId = playerId,
-                score = _scores[playerId],
-                sequence = System.DateTime.UtcNow.Ticks
-            };
-
-            NetworkBridge.Instance.SendState(state);
+            BroadcastScore(playerId);
         }
 
         public void ApplyOrbCollected(int playerId)
@@ -93,6 +80,16 @@ namespace OrbRush.GameLogic
 
             _scores[playerId]++;
             RefreshScoreUI();
+        }
+
+        public void DeductScore(int playerId, int amount = 1)
+        {
+            if (_roundEnded || amount <= 0)
+                return;
+
+            _scores.TryAdd(playerId, 0);
+            _scores[playerId] -= amount;
+            BroadcastScore(playerId);
         }
 
         public void SetRemoteScore(int playerId, int score)
@@ -201,6 +198,24 @@ namespace OrbRush.GameLogic
             }
 
             RefreshScoreUI();
+        }
+
+        private void BroadcastScore(int playerId)
+        {
+            RefreshScoreUI();
+
+            if (!NetworkBridge.Instance)
+                return;
+
+            PlayerState state = new PlayerState
+            {
+                messageType = "SCORE",
+                playerId = playerId,
+                score = _scores[playerId],
+                sequence = System.DateTime.UtcNow.Ticks
+            };
+
+            NetworkBridge.Instance.SendState(state);
         }
 
         private int GetWinnerId()

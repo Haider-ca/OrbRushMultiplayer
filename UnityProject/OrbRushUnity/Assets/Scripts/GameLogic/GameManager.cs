@@ -19,6 +19,7 @@ namespace OrbRush.GameLogic
         private void Awake()
         {
             Instance = this;
+            ForestThemeStyler.EnsureEnvironment();
         }
 
         public void SpawnLocalPlayer(int playerId, Vector3 position)
@@ -32,6 +33,7 @@ namespace OrbRush.GameLogic
             PlayerController controller = player.GetComponent<PlayerController>();
             controller.playerId = playerId;
             controller.isLocalPlayer = true;
+            ForestThemeStyler.StylePlayer(player, playerId, true);
 
             _players[playerId] = player;
             ScoreManager.Instance?.RegisterPlayer(playerId);
@@ -46,6 +48,7 @@ namespace OrbRush.GameLogic
             PlayerController controller = player.GetComponent<PlayerController>();
             controller.playerId = playerId;
             controller.isLocalPlayer = false;
+            ForestThemeStyler.StylePlayer(player, playerId, false);
 
             _players[playerId] = player;
             ScoreManager.Instance?.RegisterPlayer(playerId);
