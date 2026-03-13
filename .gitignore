@@ -47,3 +47,5 @@ UnityProject/OrbRushUnity/*.x86_64
 UnityProject/OrbRushUnity/*_Data/
 UnityProject/OrbRushUnity/*.so
 UnityProject/OrbRushUnity/*.so.*
+
+*.slnx
