@@ -84,6 +84,7 @@ namespace OrbRush.Networking
 			connection.On<int, float, float, float>("ReceiveJoin",
 				(playerId, x, y, z) =>
 				{
+					Debug.Log("[SignalR] ReceiveJoin playerId=" + playerId + " position=(" + x + ", " + y + ", " + z + ")");
 					MainThreadDispatcher.Enqueue(() =>
 					{
 						GameManager.Instance.SpawnRemotePlayer(
@@ -94,6 +95,7 @@ namespace OrbRush.Networking
 			connection.On<int>("ReceivePlayerLeft",
 				(playerId) =>
 				{
+					Debug.Log("[SignalR] ReceivePlayerLeft playerId=" + playerId);
 					MainThreadDispatcher.Enqueue(() =>
 					{
 						GameManager.Instance.RemoveRemotePlayer(playerId);
@@ -103,6 +105,7 @@ namespace OrbRush.Networking
 			connection.On<int, float, float, float, long>("ReceiveMove",
 				(playerId, x, y, z, sequence) =>
 				{
+					Debug.Log("[SignalR] ReceiveMove playerId=" + playerId + " sequence=" + sequence);
 					MainThreadDispatcher.Enqueue(() =>
 					{
 						GameManager.Instance.UpdateRemotePlayerPosition(
@@ -113,6 +116,7 @@ namespace OrbRush.Networking
 			connection.On<int, int>("ReceiveScore",
 				(playerId, score) =>
 				{
+					Debug.Log("[SignalR] ReceiveScore playerId=" + playerId + " score=" + score);
 					MainThreadDispatcher.Enqueue(() =>
 					{
 						ScoreManager.Instance.SetRemoteScore(playerId, score);
@@ -192,6 +196,7 @@ namespace OrbRush.Networking
 
 		private Task SendLocalJoinAsync()
 		{
+			Debug.Log("[SignalR] SendJoin localPlayerId=" + localPlayerId + " position=" + localSpawnPosition);
 			return connection.InvokeAsync("SendJoin",
 				localPlayerId,
 				localSpawnPosition.x,

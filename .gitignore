@@ -41,3 +41,9 @@ SignalRDllHelper/obj/
 SignalRDllHelper/publish/
 
 output/
+
+# Local Unity Linux build artifacts
+UnityProject/OrbRushUnity/*.x86_64
+UnityProject/OrbRushUnity/*_Data/
+UnityProject/OrbRushUnity/*.so
+UnityProject/OrbRushUnity/*.so.*
