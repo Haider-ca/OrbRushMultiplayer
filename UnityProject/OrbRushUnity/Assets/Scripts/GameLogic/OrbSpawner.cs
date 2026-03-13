@@ -3,7 +3,7 @@ using OrbRush.Networking;
 
 namespace OrbRush.GameLogic
 {
-    // Author: Haider, Jerry(Edit)
+    // Author: Haider, Jerry(Edit), Haven(Edit)
     // Responsibility: Spawn and respawn the orb
     public class OrbSpawner : MonoBehaviour
     {
