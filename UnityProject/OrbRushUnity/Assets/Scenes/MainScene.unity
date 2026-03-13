@@ -551,6 +551,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OrbRush.Networking.UdpNetworkManager
   multicastAddress: 230.0.0.1
   port: 11000
+  joinBroadcastIntervalSeconds: 2
+  scoreBroadcastIntervalSeconds: 2
+  orbBroadcastIntervalSeconds: 2
+  gameOverBroadcastIntervalSeconds: 1
+  remotePlayerTimeoutSeconds: 8
 --- !u!1 &1918839964
 GameObject:
   m_ObjectHideFlags: 0
@@ -567,7 +572,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &1918839965
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -625,7 +630,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e5ed56d65f90e8241a10e72e346b48f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OrbRush.Networking.NetworkBridge
-  mode: 0
+  mode: 1
 --- !u!4 &2015290980
 Transform:
   m_ObjectHideFlags: 0

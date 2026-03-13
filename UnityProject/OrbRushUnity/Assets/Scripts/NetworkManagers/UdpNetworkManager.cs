@@ -73,6 +73,9 @@ namespace OrbRush.Networking
 
 		private void Update()
 		{
+			if (GameManager.Instance == null)
+				return;
+
 			if (!isRunning)
 			{
 				CleanupTimedOutRemotePlayers();
@@ -215,6 +218,9 @@ namespace OrbRush.Networking
 
 		private Vector3 GetLocalPlayerPosition()
 		{
+			if (GameManager.Instance == null)
+				return Vector3.zero;
+
 			PlayerController[] players = FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
 			foreach (PlayerController controller in players)
 			{
@@ -340,6 +346,9 @@ namespace OrbRush.Networking
 
 		private void TrackRemotePlayerHeartbeat(PlayerState state)
 		{
+			if (GameManager.Instance == null)
+				return;
+
 			if (state.playerId == 0 || state.playerId == GameManager.Instance.localPlayerId)
 				return;
 

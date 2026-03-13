@@ -12,6 +12,8 @@ namespace OrbRushServer.Hubs
 
 		public async Task SendJoin(int playerId, float x, float y, float z)
 		{
+			Console.WriteLine("[GameHub] SendJoin playerId={0} position=({1}, {2}, {3}) connection={4}",
+				playerId, x, y, z, Context.ConnectionId);
 			PlayersByConnection[Context.ConnectionId] = new PlayerInfo(playerId, x, y, z);
 
 			foreach (PlayerInfo player in PlayersByConnection.Values)
@@ -31,6 +33,7 @@ namespace OrbRushServer.Hubs
 
 		public async Task SendMove(int playerId, float x, float y, float z, long sequence)
 		{
+			Console.WriteLine("[GameHub] SendMove playerId={0} sequence={1}", playerId, sequence);
 			if (PlayersByConnection.TryGetValue(Context.ConnectionId, out PlayerInfo? player))
 				PlayersByConnection[Context.ConnectionId] = player with { X = x, Y = y, Z = z };
 
@@ -59,6 +62,7 @@ namespace OrbRushServer.Hubs
 
 		public override async Task OnDisconnectedAsync(Exception? exception)
 		{
+			Console.WriteLine("[GameHub] Disconnect connection={0}", Context.ConnectionId);
 			if (PlayersByConnection.TryRemove(Context.ConnectionId, out PlayerInfo? player))
 				await Clients.Others.SendAsync("ReceivePlayerLeft", player.PlayerId);
 
