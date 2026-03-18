@@ -25,3 +25,27 @@ Recordings/
 
 .vscode/
 .DS_Store
+
+.vs/
+UnityProject/OrbRushUnity/.vs/
+.idea/
+UnityProject/OrbRushUnity/.idea/
+
+# ASP.NET Server build output
+OrbRushServer/bin/
+OrbRushServer/obj/
+
+# SignalR DLL helper (build tool, not needed at runtime)
+SignalRDllHelper/bin/
+SignalRDllHelper/obj/
+SignalRDllHelper/publish/
+
+output/
+
+# Local Unity Linux build artifacts
+UnityProject/OrbRushUnity/*.x86_64
+UnityProject/OrbRushUnity/*_Data/
+UnityProject/OrbRushUnity/*.so
+UnityProject/OrbRushUnity/*.so.*
+
+*.slnx
